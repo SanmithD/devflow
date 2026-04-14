@@ -1,0 +1,14 @@
+{
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ],
+  "crons": [
+    {
+      "path": "http://localhost:3000",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
