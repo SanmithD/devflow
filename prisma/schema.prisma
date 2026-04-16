@@ -13,6 +13,7 @@ model User {
   password      String
   role          String    @default("user")
   isUserAllowed Boolean   @default(true)
+  isVerified    Boolean   @default(false)
   ipAddress     String?
   createdAt     DateTime  @default(now())
   projects      Project[]
