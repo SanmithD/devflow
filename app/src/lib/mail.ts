@@ -15,16 +15,16 @@ import { redis } from '../lib/redis';
 // });
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
 });
 
-export const sendOtpMail = async ({email, otp}: {email: string; otp: string;}) => {
+export const sendOtpMail = async ({ email, otp }: { email: string; otp: string; }) => {
     try {
         const filePath = path.join(process.cwd(), 'app/src/templates/otp.hbs');
         const source = readFileSync(filePath, "utf-8");
@@ -48,24 +48,24 @@ export const optGenerator = () => {
 }
 
 // opt save in redis for 5 minutes
-export const saveOtpInRedis = async(email: string, otp: string) => {
+export const saveOtpInRedis = async (email: string, otp: string) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
-await redis.set(`signup-otp:${email}`, hashedOtp, { ex: 120 });
+    await redis.set(`signup-otp:${email}`, hashedOtp, { ex: 120 });
 }
 
 export const verifyOtp = async (email: string, otp: string) => {
 
     if (!otp) return false;
-  const storedOtp = await redis.get(`signup-otp:${email}`);
+    const storedOtp = await redis.get(`signup-otp:${email}`);
 
-  if (!storedOtp || typeof storedOtp !== "string") {
-  return false;
-}
+    if (!storedOtp || typeof storedOtp !== "string") {
+        return false;
+    }
 
-  const isValid = await bcrypt.compare(otp, storedOtp as string);
+    const isValid = await bcrypt.compare(otp, storedOtp as string);
 
-  if (!isValid) return false;
+    if (!isValid) return false;
 
-  await redis.del(`signup-otp:${email}`);
-  return true;
+    await redis.del(`signup-otp:${email}`);
+    return true;
 };

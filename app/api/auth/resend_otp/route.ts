@@ -1,20 +1,23 @@
-import { storeSignupData } from "@/app/src/lib/authStore";
-import { prisma } from "@/app/src/lib/db";
 import { optGenerator, sendOtpMail } from "@/app/src/lib/mail";
 import { redis } from "@/app/src/lib/redis";
-import bcrypt from 'bcrypt';
 import { NextRequest, NextResponse } from "next/server";
 
 export const POST = async(req: NextRequest) => {
     try {
-        const { email, password } = await req.json();
+        const { email } = await req.json();
 
-        if (typeof email !== 'string' && typeof password !== 'string') {
+        if (typeof email !== 'string') {
             return NextResponse.json({ message: 'value must be string' },{ status: 400 });
         }
 
-        if (email === '' && password === '') {
+        if (email === '') {
             return NextResponse.json({ message: 'value connot be empty' },{ status: 400 });
+        }
+
+        const cooldown = await redis.get(`otp_cooldown:${email}`);
+
+        if(cooldown){
+            return NextResponse.json({ message: 'Please wait for some time' },{ status: 429 });
         }
 
         const key = `otp_req:${email}`;
@@ -29,16 +32,15 @@ export const POST = async(req: NextRequest) => {
             return NextResponse.json({ message: 'Too many request' },{ status: 429 });
         }
 
-        const isUserExists = await prisma.user.findUnique({ where: { email } });
-
-        if(isUserExists){
-            return NextResponse.json({ message: 'User already exits' },{ status: 400 });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
         const otp = optGenerator();
 
-        await storeSignupData(email, hashedPassword, otp);
+        // overide old cache
+        await redis.set(`otp:${email}`, otp, { ex: 120 });
+
+        // set new 60s 
+        await redis.set(`otp_cooldown:${email}`, otp, { ex: 60 });
+
+        // send new otp
         await sendOtpMail({email, otp});
 
         return NextResponse.json({ message: 'Otp send to email' },{ status: 200 });
