@@ -1,6 +1,6 @@
 import { redis } from "./redis";
 
-export const storeSignupData = async (email: string, password: string, otp: string) => {
+export const storeSignupData = async (email: string, user_name: string, password: string, otp: string) => {
     try {
 
         if (typeof email !== 'string' && typeof password !== 'string' && typeof otp !== 'string') {
@@ -10,14 +10,14 @@ export const storeSignupData = async (email: string, password: string, otp: stri
             }
         }
 
-        if (email === '' && password === '' && otp === '') {
+        if (email === '' && password === '' && otp === '' && user_name === '') {
             return {
                 success: false,
                 message: 'value connot be empty'
             }
         }
 
-        const data = JSON.stringify({ email, password });
+        const data = JSON.stringify({ email, user_name, password });
 
         // active for 2 minute
         await redis.set(`signup:${email}`, data, { ex: 120 });
