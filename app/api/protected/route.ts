@@ -1,11 +1,11 @@
-import { getUserFromRequest } from "@/app/src/lib/auth";
+import { getCurrentUser } from "@/app/src/lib/auth";
 import { handleErrors } from "@/app/src/lib/error";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async(req: NextRequest) => {
     try {
         
-        const user = getUserFromRequest(req);
+        const user = getCurrentUser(req);
 
         if(!user){
             return NextResponse.json({ message: 'UnAuthorized access' },{ status: 401 });

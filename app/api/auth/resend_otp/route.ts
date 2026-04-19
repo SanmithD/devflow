@@ -1,4 +1,3 @@
-import { handleErrors } from "@/app/src/lib/error";
 import { optGenerator, sendOtpMail } from "@/app/src/lib/mail";
 import { redis } from "@/app/src/lib/redis";
 import { NextRequest, NextResponse } from "next/server";
@@ -46,6 +45,7 @@ export const POST = async (req: NextRequest) => {
 
         return NextResponse.json({ message: 'Otp send to email' }, { status: 200 });
     } catch (error) {
-        return handleErrors(error);
+        console.log('error', error);
+        return NextResponse.json({ message: 'Internal Server error' },{ status: 500 });
     }
 }

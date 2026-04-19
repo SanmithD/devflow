@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Account {
+  id                Int     @id @default(autoincrement())
+  useId             Int
+  type              String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expires_at        Int?
+
+  user User @relation(fields: [useId], references: [id])
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   email         String    @unique
@@ -18,6 +31,8 @@ model User {
   ipAddress     String?
   createdAt     DateTime  @default(now())
   projects      Project[]
+  accounts      Account[]
+  sessions      Session[]
 }
 
 model Project {
@@ -26,4 +41,21 @@ model Project {
   userId    Int
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Verification {
+  identifier String
+  token String
+  expires DateTime
+
+  @@unique([identifier, token])
 }

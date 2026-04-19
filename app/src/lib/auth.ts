@@ -1,18 +1,16 @@
 import { NextRequest } from "next/server";
 import { verifyToken } from "./jwt";
 
-export const getUserFromRequest = (req: NextRequest) => {
+export const getCurrentUser = (req: NextRequest) => {
     try {
         
-        const authHeader = req.headers.get('authorization');
+        const token = req.cookies.get("token")?.value;
 
-        if(!authHeader || !authHeader.startsWith('Bearer')){
+        if(!token){
             return null;
         }
 
-        const token = authHeader.split(" ")[1];
-
-        return verifyToken(token);
+        return verifyToken(token as string);
     } catch (error) {
         console.log('middleware error', error);
         return null;

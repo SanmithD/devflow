@@ -1,5 +1,4 @@
 import { prisma } from "@/app/src/lib/db";
-import { handleErrors } from "@/app/src/lib/error";
 import { generateToken } from "@/app/src/lib/jwt";
 import bcrypt from 'bcrypt';
 import { NextRequest, NextResponse } from "next/server";
@@ -46,8 +45,19 @@ export const POST = async (req: NextRequest) => {
             role: user.role
         });
 
-        return NextResponse.json({ message: 'Login success', token }, { status: 200 });
+        const response = NextResponse.json({ message: 'Login success', token }, { status: 200 });
+
+        response.cookies.set("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7 // set for 7 days
+        });
+
+        return response;
     } catch (error) {
-        return handleErrors(error);
+        console.log('error', error);
+        return NextResponse.json({ message: 'Internal Server error' },{ status: 500 });
     }
 }

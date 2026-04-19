@@ -50,22 +50,25 @@ export const optGenerator = () => {
 // opt save in redis for 5 minutes
 export const saveOtpInRedis = async (email: string, otp: string) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
-    await redis.set(`signup-otp:${email}`, hashedOtp, { ex: 120 });
+    await redis.set(`signup-otp:${email}`, hashedOtp, { ex: 300 });
 }
 
 export const verifyOtp = async (email: string, otp: string) => {
+  console.log("Incoming OTP:", otp);
 
-    if (!otp) return false;
-    const storedOtp = await redis.get(`signup-otp:${email}`);
+  const storedOtp = await redis.get(`signup-otp:${email}`);
+  console.log("Stored OTP:", storedOtp);
 
-    if (!storedOtp || typeof storedOtp !== "string") {
-        return false;
-    }
+  if (!storedOtp || typeof storedOtp !== "string") {
+    console.log("No OTP found in Redis");
+    return false;
+  }
 
-    const isValid = await bcrypt.compare(otp, storedOtp as string);
+  const isValid = await bcrypt.compare(otp, storedOtp);
+  console.log("Match result:", isValid);
 
-    if (!isValid) return false;
+  if (!isValid) return false;
 
-    await redis.del(`signup-otp:${email}`);
-    return true;
+  await redis.del(`signup-otp:${email}`);
+  return true;
 };
