@@ -4,6 +4,7 @@ import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -76,6 +77,7 @@ function Signup() {
     password: "",
   });
 
+  const router = useRouter();
   const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -114,24 +116,15 @@ function Signup() {
   const handleSignup = async () => {
     try {
       setLoading(true);
-      //   const res = await signIn("credentials", {
-      //     email: formData.email,
-      //     password: formData.password,
-      //     redirect: false,
-      //   });
-      //   if (res?.error) {
-      //     toast.error(res.error);
-      //     return;
-      //   }
-      //   await axios.post("/api/auth/signup", formData);
 
-      console.log("calling");
       await axios.post("/api/auth/verify", {
         email: formData.email,
         user_name: formData.user_name,
         password: formData.password,
         otp,
       });
+
+      router.push('/dashboard');
       toast.success("Account created 🎉");
     } catch (err) {
       console.error(err);
@@ -199,7 +192,7 @@ function Signup() {
             <button
               onClick={handleSendOtp}
               disabled={cooldown > 0 || loading}
-              className="h-[52px] px-4 bg-violet-500/15 border border-violet-500/30 text-violet-400 rounded-[10px] text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 hover:bg-violet-500/25 hover:border-violet-500/50 disabled:opacity-50 disabled:cursor-default"
+              className="h-12 px-4 bg-violet-500/15 border border-violet-500/30 text-violet-400 rounded-[10px] text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 hover:bg-violet-500/25 hover:border-violet-500/50 disabled:opacity-50 disabled:cursor-default"
             >
               {cooldown > 0 ? formatCooldown() : "Send OTP"}
             </button>
@@ -259,8 +252,8 @@ function Signup() {
         {/* OAuth Buttons */}
         <div className="flex gap-2.5">
           <button
-            onClick={() => signIn("google")}
-            className="flex-1 h-[46px] flex items-center justify-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.15] hover:text-white"
+            onClick={() => signIn("google", { callbackUrl: '/' })}
+            className="flex-1 h-11.5 flex items-center justify-center gap-2 bg-white/4 border border-white/8 rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/15 hover:text-white"
           >
             <svg
               width="18"
@@ -289,8 +282,8 @@ function Signup() {
           </button>
 
           <button
-            onClick={() => signIn("github")}
-            className="flex-1 h-[46px] flex items-center justify-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.15] hover:text-white"
+            onClick={() => signIn("github", { callbackUrl: '/' })}
+            className="flex-1 h-11.5 flex items-center justify-center gap-2 bg-white/4 border border-white/8 rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/15 hover:text-white"
           >
             <svg
               width="18"
@@ -309,7 +302,7 @@ function Signup() {
         <p className="text-center text-[13px] text-white/35 mt-5">
           Already have an account?{" "}
           <a
-            href="/login"
+            href="/auth/login"
             className="text-violet-400 font-medium hover:underline"
           >
             Sign in

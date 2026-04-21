@@ -1,28 +1,22 @@
 import bcrypt from 'bcrypt';
 import { readFileSync } from 'fs';
 import handlebars from 'handlebars';
-import nodemailer from "nodemailer";
+// import nodemailer from "nodemailer";
 import path from "path";
+import { Resend } from 'resend';
 import { redis } from '../lib/redis';
 
 // const transporter = nodemailer.createTransport({
-//   host: "smtp.sendgrid.net",
-//   port: 587,
-//   auth: {
-//     user: "apikey",
-//     pass: process.env.SENDGRID_API_KEY,
-//   },
+//     host: "smtp.gmail.com",
+//     port: 587,
+//     secure: false,
+//     auth: {
+//         user: process.env.EMAIL_USER,
+//         pass: process.env.EMAIL_PASS,
+//     },
 // });
 
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendOtpMail = async ({ email, otp }: { email: string; otp: string; }) => {
     try {
@@ -32,12 +26,19 @@ export const sendOtpMail = async ({ email, otp }: { email: string; otp: string; 
         const template = handlebars.compile(source)
         const html = template({ otp });
 
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+        // await transporter.sendMail({
+        //     from: process.env.EMAIL_USER,
+        //     to: email,
+        //     subject: 'DevFlow - Verification Otp',
+        //     html
+        // });
+
+        await resend.emails.send({
+            from: "DevFlow <onboarding@resend.dev>",
             to: email,
             subject: 'DevFlow - Verification Otp',
             html
-        });
+        })
     } catch (error) {
         console.log('fail to send opt', error)
     }

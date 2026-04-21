@@ -32,6 +32,8 @@ export const POST = async (req: NextRequest) => {
             return NextResponse.json({ message: 'Account is blocked' }, { status: 403 });
         }
 
+        console.log('email and pass', email, "and ", password, 'user', user.password);
+
         const isMatch = await bcrypt.compare(password, user.password)
 
         if (!isMatch) {

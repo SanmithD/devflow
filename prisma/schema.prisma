@@ -54,8 +54,20 @@ model Session {
 
 model Verification {
   identifier String
-  token String
-  expires DateTime
+  token      String
+  expires    DateTime
 
   @@unique([identifier, token])
 }
+
+model MailRecord {
+  id        Int      @id @default(autoincrement())
+  table     String
+  value     String
+  userId    Int
+  createdAt DateTime @default(now())
+}
+
+
+
+// npx prisma migrate dev --name add_user_model
