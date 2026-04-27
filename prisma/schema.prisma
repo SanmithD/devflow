@@ -9,30 +9,39 @@ datasource db {
 
 model Account {
   id                Int     @id @default(autoincrement())
-  useId             Int
+  userId             Int
   type              String
   provider          String
   providerAccountId String
-  accessToken       String?
-  refreshToken      String?
+  refresh_token     String? @db.Text       
+  access_token      String? @db.Text 
   expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
-  user User @relation(fields: [useId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
 }
 
 model User {
   id            Int       @id @default(autoincrement())
   email         String    @unique
-  password      String
-  user_name     String
+  password      String?
+  user_name     String?
+  emailVerified DateTime?           // ← add this (NextAuth needs it)
+  image         String? 
   role          String    @default("user")
   isUserAllowed Boolean   @default(true)
-  isVerified    Boolean   @default(false)
+  isVerified    Boolean   @default(true)
   ipAddress     String?
   createdAt     DateTime  @default(now())
   projects      Project[]
   accounts      Account[]
   sessions      Session[]
+  ailogs        AILog[]
 }
 
 model Project {
@@ -41,6 +50,7 @@ model Project {
   userId    Int
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+  ailogs    AILog[]
 }
 
 model Session {
@@ -68,6 +78,16 @@ model MailRecord {
   createdAt DateTime @default(now())
 }
 
+model AILog {
+  id        Int      @unique @default(autoincrement())
+  userId    Int
+  projectId Int
+  input     String
+  response  String
+  createdAt DateTime @default(now())
 
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
 
 // npx prisma migrate dev --name add_user_model

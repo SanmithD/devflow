@@ -9,23 +9,39 @@ import { prisma } from "./db";
 import { verifyToken } from "./jwt";
 
 export const getCurrentUser = (req: NextRequest) => {
-    try {
-        
-        const token = req.cookies.get("token")?.value;
+  try {
 
-        if(!token){
-            return null;
-        }
+    const token = req.cookies.get("token")?.value;
 
-        return verifyToken(token as string);
-    } catch (error) {
-        console.log('middleware error', error);
-        return null;
+    if (!token) {
+      return null;
     }
-} 
+
+    return verifyToken(token as string);
+  } catch (error) {
+    console.log('middleware error', error);
+    return null;
+  }
+}
+
+const prismaAdapter = PrismaAdapter(prisma);
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: {
+    ...prismaAdapter,
+    createUser: (data: any) => {
+      return prisma.user.create({
+        data: {
+          email: data.email,
+          emailVerified: data.emailVerified,
+          image: data.image,                          // add image to your schema too (below)
+          user_name: data.name ?? data.email.split("@")[0],
+          isVerified: true,
+          isUserAllowed: true,
+        }
+      })
+    }
+  },
 
   providers: [
     GitHubProvider({
@@ -57,7 +73,7 @@ export const authOptions: NextAuthOptions = {
 
         const isMatch = await bcrypt.compare(
           credentials.password,
-          user.password
+          user?.password || ""
         );
 
         if (!isMatch) throw new Error("Invalid Credentials");
@@ -94,7 +110,9 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      if (url.startsWith(baseUrl)) return url;
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Allow URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
     },
   },
