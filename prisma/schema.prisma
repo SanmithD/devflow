@@ -9,12 +9,12 @@ datasource db {
 
 model Account {
   id                Int     @id @default(autoincrement())
-  userId             Int
+  userId            Int
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text       
-  access_token      String? @db.Text 
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
@@ -27,21 +27,44 @@ model Account {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique
-  password      String?
-  user_name     String?
-  emailVerified DateTime?           // ← add this (NextAuth needs it)
-  image         String? 
-  role          String    @default("user")
-  isUserAllowed Boolean   @default(true)
-  isVerified    Boolean   @default(true)
-  ipAddress     String?
-  createdAt     DateTime  @default(now())
-  projects      Project[]
-  accounts      Account[]
-  sessions      Session[]
-  ailogs        AILog[]
+  id                Int         @id @default(autoincrement())
+  email             String      @unique
+  password          String?
+  user_name         String?
+  emailVerified     DateTime? // ← add this (NextAuth needs it)
+  image             String?
+  role              String      @default("user")
+  isUserAllowed     Boolean     @default(true)
+  isVerified        Boolean     @default(true)
+  ipAddress         String?
+  subscription_plan String?
+  createdAt         DateTime    @default(now())
+  projects          Project[]
+  accounts          Account[]
+  sessions          Session[]
+  ailogs            AILog[]
+  userUsages        UserUsage[]
+}
+
+model UserUsage {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  user              User     @relation(fields: [userId], references: [id])
+  monthlyTokenLimit Int      @default(15000)
+  usedInputToken    Int      @default(0)
+  usedOutpoutToken  Int      @default(0)
+  resetAt           DateTime
+  createdAt         DateTime @default(now())
+}
+
+model TokenUsage {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+  createdAt    DateTime @default(now())
 }
 
 model Project {
