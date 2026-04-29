@@ -9,20 +9,38 @@ export const POST = async (req: NextRequest) => {
         const userId = session?.user.id;
 
         const body = await req.json();
-        const { message, chat_id } = body;
+        const { message, projectId } = body;
 
         if (!message || typeof message !== 'string' || message === "") {
             return NextResponse.json({ message: 'Invalid Message Request' }, { status: 400 });
         }
 
-        const response = await prisma.aILog.create({
-            data: {
-                userId: Number(userId) ?? 0,
-                input: message,
-                projectId: 1,
-                response: 'Hello'
-            }
-        });
+        let response;
+        if (projectId) {
+            response = await prisma.aILog.create({
+                data: {
+                    userId: Number(userId) ?? 0,
+                    input: message,
+                    projectId,
+                    response: 'Hello'
+                }
+            });
+        }else{
+            const newProject = await prisma.project.create({
+                data: {
+                    userId: Number(userId),
+                    name: message
+                }
+            });
+            response = await prisma.aILog.create({
+                data: {
+                    userId: Number(userId) ?? 0,
+                    input: message,
+                    projectId: newProject.id,
+                    response: 'Hello'
+                }
+            });
+        }
 
         return NextResponse.json({ result: response }, { status: 201 })
 
@@ -110,7 +128,7 @@ export const GET = async (req: NextRequest) => {
 
         const nextCursor = messages.length === limit ? messages[0].id : null;
 
-        return NextResponse.json({ messages, nextCursor, hasMore: !!nextCursor },{ status: 200 });
+        return NextResponse.json({ messages, nextCursor, hasMore: !!nextCursor }, { status: 200 });
 
     } catch (error) {
         console.log(error);
