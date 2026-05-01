@@ -20,24 +20,11 @@ export const POST = async (req: NextRequest) => {
 
         const { limit } = body;
 
-        const messages = await prisma.project.groupBy({
-            by: ['id'],
-            where: {
-                userId: Number(userId),
-            },
-            _max: {
-                createdAt: true,
-            },
-            orderBy: {
-                _max: {
-                    createdAt: 'desc'
-                }
-            },
-            take: Number(limit)
+        const messages = await prisma.project.findMany({
+            where: { userId: Number(userId) },
+            take: limit,
+            orderBy: { createdAt: "desc" }
         });
-
-        // retrun latest messages oldest -> newest
-        messages.reverse();
 
         const nextCursor = messages.length === limit ? messages[0].id : null;
 

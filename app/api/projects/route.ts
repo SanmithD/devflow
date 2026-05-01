@@ -15,6 +15,11 @@ export const POST = async (req: NextRequest) => {
             return NextResponse.json({ message: 'Invalid Message Request' }, { status: 400 });
         }
 
+        const ip =
+            req.headers.get("x-forwarded-for")?.split(",")[0] ||
+            req.headers.get("x-real-ip") ||
+            "unknown";
+
         let response;
         if (projectId) {
             response = await prisma.aILog.create({
@@ -25,11 +30,15 @@ export const POST = async (req: NextRequest) => {
                     response: 'Hello'
                 }
             });
-        }else{
+        } else {
+            const projectTitle = message.split(" ").slice(0, 4).join(" ");
+
             const newProject = await prisma.project.create({
                 data: {
                     userId: Number(userId),
-                    name: message
+                    name: message,
+                    ipAddress: ip,
+                    title: projectTitle
                 }
             });
             response = await prisma.aILog.create({
@@ -37,6 +46,7 @@ export const POST = async (req: NextRequest) => {
                     userId: Number(userId) ?? 0,
                     input: message,
                     projectId: newProject.id,
+                    ipAddress: ip,
                     response: 'Hello'
                 }
             });

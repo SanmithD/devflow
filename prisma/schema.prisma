@@ -71,6 +71,8 @@ model Project {
   id        Int      @id @default(autoincrement())
   name      String
   userId    Int
+  title     String?
+  ipAddress String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   ailogs    AILog[]
@@ -107,6 +109,7 @@ model AILog {
   projectId Int
   input     String
   response  String
+  ipAddress String?
   createdAt DateTime @default(now())
   project   Project  @relation(fields: [projectId], references: [id])
   user      User     @relation(fields: [userId], references: [id])

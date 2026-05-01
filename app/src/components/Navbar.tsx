@@ -3,12 +3,16 @@
 import { LogoutButton } from "@/app/auth/logout/page";
 import { Bell, User2Icon } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 function Navbar() {
+
+  const router = useRouter();
+
   return (
     <div className="flex justify-between items-center border-b px-2 md:px-4">
       {/* logo */}
-      <div className="relative h-10 w-[20%] md:h-20 flex justify-start overflow-hidden">
+      <div onClick={()=>router.push('/dashboard')} className="relative h-10 w-[20%] md:h-15 flex justify-start overflow-hidden">
         {/* Image */}
         <Image
           src="/devflow-logo.png"
