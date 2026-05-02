@@ -20,7 +20,12 @@ export const getAllHistory = async(req: NextRequest) => {
 
         const { limit } = body;
 
+        if(!limit){
+            return NextResponse.json({ message: 'Limit is missing' },{ status: 400 });
+        }
+
         const historyRepo = new HistoryRepository();
+
         const response = await historyRepo.findHistory({ userId: Number(userId), limit });
 
         if (!response.success) {

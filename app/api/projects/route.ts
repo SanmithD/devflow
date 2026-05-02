@@ -2,6 +2,7 @@ import { authOptions } from "@/app/src/lib/auth";
 import { prisma } from "@/app/src/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { runAgent } from "../ai/agents/smaple.agent";
 
 export const POST = async (req: NextRequest) => {
     try {
@@ -12,11 +13,6 @@ export const POST = async (req: NextRequest) => {
         }
 
         const userId = session?.user.id;
-
-        if (!userId || isNaN(Number(userId))) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-        }
-
         const body = await req.json();
         const { message, projectId } = body;
 
@@ -24,24 +20,15 @@ export const POST = async (req: NextRequest) => {
             return NextResponse.json({ message: 'Invalid Message Request' }, { status: 400 });
         }
 
-        const ip =
-            req.headers.get("x-forwarded-for")?.split(",")[0] ||
-            req.headers.get("x-real-ip") ||
-            "unknown";
+        const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || 
+                   req.headers.get("x-real-ip") || 
+                   "unknown";
 
-        let response;
-        if (projectId) {
-            response = await prisma.aILog.create({
-                data: {
-                    userId: Number(userId) ?? 0,
-                    input: message,
-                    projectId,
-                    response: 'Hello'
-                }
-            });
-        } else {
+        let currentProjectId = projectId;
+
+        // Create project if needed
+        if (!projectId) {
             const projectTitle = message.split(" ").slice(0, 4).join(" ");
-
             const newProject = await prisma.project.create({
                 data: {
                     userId: Number(userId),
@@ -51,104 +38,70 @@ export const POST = async (req: NextRequest) => {
                     title: projectTitle
                 }
             });
-            response = await prisma.aILog.create({
-                data: {
-                    userId: Number(userId) ?? 0,
-                    input: message,
-                    projectId: newProject.id,
-                    ipAddress: ip,
-                    response: 'Hello'
+            currentProjectId = newProject.id;
+        }
+
+        const encoder = new TextEncoder();
+        let fullResponse = "";
+
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    const agentStream = await runAgent(message, String(currentProjectId));
+
+                    if (!agentStream) {
+                        const errorMsg = "Failed to generate response";
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: errorMsg })}\n\n`));
+                        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                        controller.close();
+                        return;
+                    }
+
+                    const reader = agentStream.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const text = decoder.decode(value, { stream: true });
+                        fullResponse += text;
+
+                        // ✅ Send properly formatted SSE
+                        controller.enqueue(
+                            encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
+                        );
+                    }
+
+                    // Save to DB
+                    await prisma.aILog.create({
+                        data: {
+                            userId: Number(userId),
+                            input: message,
+                            projectId: currentProjectId,
+                            ipAddress: ip,
+                            response: fullResponse
+                        }
+                    });
+
+                    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                } catch (error) {
+                    console.error("Stream error:", error);
+                    controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({ text: "Error occurred" })}\n\n`)
+                    );
+                    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
                 }
-            });
-        }
-
-        return NextResponse.json({ result: response }, { status: 201 })
-
-    } catch (error) {
-        console.log(error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
-    }
-}
-
-export const DELETE = async (req: NextRequest) => {
-    try {
-        const session = await getServerSession(authOptions);
-        const userId = session?.user.id;
-        const { id } = await req.json();
-
-        if (!id || typeof id !== 'number' || id <= 0) {
-            return NextResponse.json({ message: 'Invalid Id' }, { status: 400 });
-        }
-
-        const response = await prisma.aILog.delete({
-            where: { id, userId: Number(userId) }
+            }
         });
 
-        if (!response) {
-            return NextResponse.json({ message: 'Not Found' }, { status: 404 });
-        }
-
-        return NextResponse.json({ message: 'Chat Deleted' }, { status: 200 });
-    } catch (error) {
-        console.log(error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
-    }
-}
-
-export const GET = async (req: NextRequest) => {
-    try {
-        const session = await getServerSession(authOptions);
-
-        if (!session?.user?.id) {
-            return NextResponse.json(
-                { message: "Unauthorized" },
-                { status: 401 }
-            );
-        }
-
-        const userId = session?.user.id;
-
-        const { searchParams } = new URL(req.url);
-
-        const chatId = Number(searchParams.get("chatId"));
-        const cursor = searchParams.get("cursor"); // oldest message id
-        const limit = 20;
-
-        if (!chatId) {
-            return NextResponse.json(
-                { message: "chatId required" },
-                { status: 400 }
-            );
-        }
-
-        let messages;
-
-        if (!cursor) {
-            messages = await prisma.aILog.findMany({
-                where: { id: chatId, userId: Number(userId) },
-                orderBy: { createdAt: 'desc' },
-                take: Number(limit),
-            });
-
-            // retrun latest messages oldest -> newest
-            messages.reverse();
-        } else {
-            messages = await prisma.aILog.findMany({
-                where: { id: chatId, userId: Number(userId) },
-                orderBy: { createdAt: 'desc' },
-                cursor: {
-                    id: Number(cursor)
-                },
-                skip: 1,
-                take: limit
-            });
-
-            messages.reverse();
-        }
-
-        const nextCursor = messages.length === limit ? messages[0].id : null;
-
-        return NextResponse.json({ messages, nextCursor, hasMore: !!nextCursor }, { status: 200 });
+        return new Response(stream, {
+            headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            },
+        });
 
     } catch (error) {
         console.log(error);

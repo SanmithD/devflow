@@ -2,44 +2,37 @@
 
 import axios from "axios";
 import { ArrowUp, ShareIcon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm"; // ✅ For tables support
 
 function Chat() {
   const params = useParams();
-  const router = useRouter();
-
   const projectId = params?.id as string | undefined;
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<{ type: string; text: string }[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // fetch old messages
   const fetchPastMessage = async () => {
     try {
-      const project_id = Number(projectId);
-      const res = await axios.get(`/api/projects/${project_id}/logs`);
-
+      const res = await axios.get(`/api/projects/${Number(projectId)}/logs`);
       const logs = res?.data?.result || [];
-
       const formatted = logs
         .map((item: any) => [
           { type: "user", text: item.input },
           { type: "bot", text: item.response },
         ])
         .flat();
-
       setMessages(formatted);
-    } catch (error) {
-      console.log(error);
+    } catch {
       toast.error("Failed to load messages");
     }
   };
@@ -50,42 +43,76 @@ function Chat() {
   }, [projectId]);
 
   const handleChat = async () => {
-    if (loading) return;
+    if (loading || !message.trim()) {
+      toast.error("Message is required");
+      return;
+    }
+
+    setLoading(true);
+    const userText = message;
+
+    setMessages((prev) => [...prev, { type: "user", text: userText }]);
+    setMessage("");
+    setMessages((prev) => [...prev, { type: "bot", text: "" }]);
 
     try {
-      if (!message.trim()) {
-        toast.error("Message is required");
-        return;
-      }
-
-      setLoading(true);
-
-      const userMessage = { type: "user", text: message };
-      setMessages((prev) => [...prev, userMessage]);
-
-      setMessage("");
-
-      const res = await axios.post("/api/projects", {
-        message,
-        projectId: Number(projectId),
+      const response = await fetch("/api/projects/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userText,
+          projectId: projectId ? Number(projectId) : null,
+        }),
       });
 
-      const newProjectId = res?.data?.result?.projectId;
-
-      // 👇 update URL after first message
-      if (!projectId && newProjectId) {
-        router.push(`/dashboard/projects/${newProjectId}`);
+      if (!response.ok || !response.body) {
+        throw new Error("Stream failed");
       }
 
-      const botMessage = {
-        type: "bot",
-        text: res?.data?.result?.response,
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      setMessages((prev) => [...prev, botMessage]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter((l) => l.trim().startsWith("data:"));
+
+        for (const line of lines) {
+          const data = line.replace(/^data:\s*/, "").trim();
+
+          if (data === "[DONE]") {
+            break;
+          }
+
+          if (data) {
+            try {
+              const parsed = JSON.parse(data);
+              const text = parsed.text || "";
+
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+
+                if (last?.type === "bot") {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    text: last.text + text,
+                  };
+                }
+
+                return updated;
+              });
+            } catch (err) {
+              console.error("Chunk parse error:", err, "Data:", data);
+            }
+          }
+        }
+      }
     } catch (error) {
-      console.log(error);
-      toast.error("Fail to send message");
+      console.error(error);
+      toast.error("Failed to send message");
     } finally {
       setLoading(false);
     }
@@ -93,14 +120,11 @@ function Chat() {
 
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-3">
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex ${
-              msg.type === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
               className={`px-4 py-2 rounded-2xl shadow max-w-[70%] ${
@@ -109,38 +133,44 @@ function Chat() {
                   : "bg-white text-gray-800"
               }`}
             >
-              {msg.text}
+              {msg.type === "bot" ? (
+                <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-2 prose-p:my-1 prose-table:text-sm">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.text}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{msg.text}</p>
+              )}
             </div>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-3">
+      <div className="p-3 border-t">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
-          <div>
-            <ShareIcon/>
-          </div>
+          <ShareIcon className="text-gray-500" size={20} />
           <input
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleChat();
               }
             }}
             placeholder="Type a message..."
-            className="flex-1 border rounded-full px-4 py-2"
+            className="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           />
-
           <button
             onClick={handleChat}
-            className="bg-blue-600 text-white px-4 py-2 rounded-full"
+            disabled={loading}
+            className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ArrowUp />
+            <ArrowUp size={20} />
           </button>
         </div>
       </div>
