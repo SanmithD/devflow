@@ -6,7 +6,16 @@ import { NextRequest, NextResponse } from "next/server";
 export const POST = async (req: NextRequest) => {
     try {
         const session = await getServerSession(authOptions);
+
+        if (!session?.user?.id) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+
         const userId = session?.user.id;
+
+        if (!userId || isNaN(Number(userId))) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
 
         const body = await req.json();
         const { message, projectId } = body;
@@ -38,6 +47,7 @@ export const POST = async (req: NextRequest) => {
                     userId: Number(userId),
                     name: message,
                     ipAddress: ip,
+                    status: 1,
                     title: projectTitle
                 }
             });

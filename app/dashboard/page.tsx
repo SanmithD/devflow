@@ -1,12 +1,16 @@
 "use client";
 
-import { ArrowBigLeft, ArrowBigRight } from "lucide-react";
+import { ArrowBigLeft, ArrowBigRight, PlusCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Chat from "../src/components/Chat";
 import ChatHistory from "../src/components/ChatHistory";
 import Navbar from "../src/components/Navbar";
 
 export default function DashboardPage() {
+
+  const router = useRouter();
+
   const [showRight, setShowRight] = useState(true);
   const [showLeft, setShowLeft] = useState(true);
   return (
@@ -16,7 +20,7 @@ export default function DashboardPage() {
       <div className="flex flex-1 w-full overflow-hidden">
         {/* LEFT */}
         <div
-          className={`transition-all duration-300 border-r border-gray-300 py-4 overflow-hidden ${
+          className={`transition-all duration-300 border-r border-gray-800 py-4 overflow-hidden ${
             showLeft ? "w-[20%]" : "w-[4%] p-0"
           }`}
         >
@@ -33,6 +37,11 @@ export default function DashboardPage() {
                     className={`bg-gray-800 cursor-pointer h-fit text-white px-3 py-1 rounded absolute'right-0'`}
                   >
                     {showLeft ? <ArrowBigLeft /> : <ArrowBigRight />}
+                  </button>
+                </div>
+                <div>
+                  <button onClick={()=>router.push('/dashboard')} className="text-[16px] w-full px-4 py-1 rounded-md flex items-center gap-2 cursor-pointer font-medium hover:bg-gray-700 active:bg-gray-800 mb-2 tracking-wider md:mb-4">
+                    <PlusCircle size={18} /> <span>New chat</span> 
                   </button>
                 </div>
 
@@ -85,7 +94,7 @@ export default function DashboardPage() {
                 </h1>
               </div>
 
-              <ChatHistory isActive={true} />
+              {/* <ChatHistory isActive={true} /> */}
             </div>
           )}
           <button

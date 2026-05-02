@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, ShareIcon } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -117,8 +117,11 @@ function Chat() {
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t">
+      <div className="p-3">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
+          <div>
+            <ShareIcon/>
+          </div>
           <input
             type="text"
             value={message}

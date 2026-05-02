@@ -1,18 +1,21 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
   Archive,
   Bookmark,
+  Check,
   MessageSquare,
   MoreHorizontal,
   Pencil,
   Share2,
   Trash2,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 interface HistoryItem {
   id: string;
@@ -36,18 +39,32 @@ function timeAgo(dateStr?: string): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 interface ActionMenuProps {
   itemId: string;
+  itemTitle: string;
   openId: string | null;
   setOpenId: (id: string | null) => void;
+  renamingId: string | null;
+  setRenamingId: (id: string | null) => void;
 }
 
-function ActionMenu({ itemId, openId, setOpenId }: ActionMenuProps) {
+function ActionMenu({
+  itemId,
+  itemTitle,
+  openId,
+  setOpenId,
+  renamingId,
+  setRenamingId,
+}: ActionMenuProps) {
   const isOpen = openId === itemId;
   const menuRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,15 +77,64 @@ function ActionMenu({ itemId, openId, setOpenId }: ActionMenuProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen, setOpenId]);
 
+  // FIX 1: handlers are now properly called (no missing `()`, no wrong method)
+  const handleRename = () => {
+    setRenamingId(itemId);
+    setOpenId(null);
+  };
+
+  const handleDelete = async () => {
+    setOpenId(null);
+    try {
+      // FIX 2: DELETE with a body must use `data` config, not a second positional arg
+      await axios.delete(`/api/projects/history/${itemId}`);
+      toast.success("Deleted");
+      queryClient.invalidateQueries({ queryKey: ["history"] });
+    } catch (error) {
+      console.error("delete error", error);
+      toast.error("Failed to delete");
+    }
+  };
+
+  const handleBookmark = async () => {
+    setOpenId(null);
+    try {
+      // FIX 3: bookmark is likely a POST/PUT, not DELETE — adjust to your API
+      await axios.post(`/api/projects/bookmark/${itemId}`);
+      toast.success("Bookmarked");
+    } catch (error) {
+      console.error("bookmark error", error);
+      toast.error("Failed to bookmark");
+    }
+  };
+
+  const handleArchive = async () => {
+    setOpenId(null);
+    try {
+      // FIX 4: archive is likely a POST/PUT, not DELETE — adjust to your API
+      await axios.post(`/api/projects/archive`,{ id: itemId });
+      toast.success("Archived");
+      queryClient.invalidateQueries({ queryKey: ["history"] });
+    } catch (error) {
+      console.error("archive error", error);
+      toast.error("Failed to archive");
+    }
+  };
+
   const actions = [
-    { icon: Pencil, label: "Rename", onClick: () => {} },
-    { icon: Bookmark, label: "Bookmark", onClick: () => {} },
-    { icon: Archive, label: "Archive", onClick: () => {} },
-    { icon: Share2, label: "Share", onClick: () => {} },
+    // FIX 5: onClick values now correctly reference the functions (no `() => handleX` wrapping)
+    { icon: Pencil, label: "Rename", onClick: handleRename },
+    { icon: Bookmark, label: "Bookmark", onClick: handleBookmark },
+    { icon: Archive, label: "Archive", onClick: handleArchive },
+    { icon: Share2, label: "Share", onClick: () => setOpenId(null) },
   ];
 
   return (
-    <div ref={menuRef} className="relative" onClick={(e) => e.stopPropagation()}>
+    <div
+      ref={menuRef}
+      className="relative"
+      onClick={(e) => e.stopPropagation()}
+    >
       <button
         onClick={() => setOpenId(isOpen ? null : itemId)}
         aria-label="More actions"
@@ -95,7 +161,7 @@ function ActionMenu({ itemId, openId, setOpenId }: ActionMenuProps) {
           {actions.map(({ icon: Icon, label, onClick }) => (
             <button
               key={label}
-              onClick={() => { onClick(); setOpenId(null); }}
+              onClick={onClick}
               className="
                 w-full flex items-center gap-2.5 px-3 py-2
                 text-sm text-gray-300 hover:text-gray-100 hover:bg-white/10
@@ -107,8 +173,9 @@ function ActionMenu({ itemId, openId, setOpenId }: ActionMenuProps) {
             </button>
           ))}
           <div className="my-1 border-t border-white/10" />
+          {/* FIX 6: was `{setOpenId(null), handleDelete}` — comma operator bug, never called handleDelete */}
           <button
-            onClick={() => setOpenId(null)}
+            onClick={handleDelete}
             className="
               w-full flex items-center gap-2.5 px-3 py-2
               text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10
@@ -124,13 +191,91 @@ function ActionMenu({ itemId, openId, setOpenId }: ActionMenuProps) {
   );
 }
 
+// NEW: Inline rename input shown directly in the list item
+interface RenameInputProps {
+  itemId: string;
+  currentTitle: string;
+  onDone: () => void;
+}
+
+function RenameInput({ itemId, currentTitle, onDone }: RenameInputProps) {
+  const [value, setValue] = useState(currentTitle);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const handleSave = async () => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === currentTitle) {
+      onDone();
+      return;
+    }
+    try {
+      await axios.put(`/api/projects/history/${itemId}`, {
+        title: trimmed,
+        id: itemId,
+      });
+      toast.success("Renamed");
+      queryClient.invalidateQueries({ queryKey: ["history"] });
+    } catch (error) {
+      console.error("rename error", error);
+      toast.error("Failed to rename");
+    } finally {
+      onDone();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") onDone();
+  };
+
+  return (
+    <div
+      className="flex items-center gap-1 flex-1 min-w-0"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="
+          flex-1 min-w-0 bg-white/10 text-gray-100 text-sm
+          rounded-md px-2 py-0.5 outline-none
+          border border-white/20 focus:border-white/40
+          transition-colors
+        "
+      />
+      <button
+        onClick={handleSave}
+        className="text-green-400 hover:text-green-300 shrink-0"
+        aria-label="Confirm rename"
+      >
+        <Check className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={onDone}
+        className="text-gray-500 hover:text-gray-300 shrink-0"
+        aria-label="Cancel rename"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function SkeletonItem() {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg animate-pulse">
       <div className="w-4 h-4 rounded bg-white/10 shrink-0" />
       <div className="flex-1 space-y-1.5">
         <div className="h-3 bg-white/10 rounded-full w-3/4" />
-        <div className="h-2.5 bg-white/[0.06] rounded-full w-1/3" />
+        <div className="h-2.5 bg-white/6 rounded-full w-1/3" />
       </div>
     </div>
   );
@@ -143,20 +288,28 @@ function EmptyState() {
         <MessageSquare className="w-5 h-5 text-gray-500" />
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-400">No conversations yet</p>
-        <p className="text-xs text-gray-600 mt-0.5">Your chat history will appear here</p>
+        <p className="text-sm font-medium text-gray-400">
+          No conversations yet
+        </p>
+        <p className="text-xs text-gray-600 mt-0.5">
+          Your chat history will appear here
+        </p>
       </div>
     </div>
   );
 }
 
 export default function ChatHistory({ isActive }: { isActive: boolean }) {
-
   const router = useRouter();
   const [openActionId, setOpenActionId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchHistory = async ({ pageParam = 40 }: { pageParam: number }): Promise<HistoryPage> => {
+  const fetchHistory = async ({
+    pageParam = 40,
+  }: {
+    pageParam: number;
+  }): Promise<HistoryPage> => {
     const res = await axios.post("/api/projects/history", { limit: pageParam });
     return res.data;
   };
@@ -182,16 +335,14 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   useEffect(() => {
     const el = observerRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
           fetchNextPage();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
-
     observer.observe(el);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -199,9 +350,8 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   const history = data?.pages.flatMap((page) => page.messages) ?? [];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Scrollable list */}
-      <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-2 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+    <div className="h-full flex flex-col overflow-hidden no-scrollbar">
+      <div className="flex-1 overflow-y-auto no-scrollbar overscroll-contain px-2 py-2 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
         {isLoading ? (
           <div className="space-y-0.5">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -223,35 +373,53 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
                 className="
                   group relative flex items-center gap-2.5 px-3 py-2.5
                   rounded-lg cursor-pointer select-none
-                  hover:bg-white/[0.06] active:bg-white/[0.09]
+                  hover:bg-white/6 active:bg-white/9
                   transition-colors duration-100
                 "
               >
-                {/* Icon */}
                 <MessageSquare className="w-3.5 h-3.5 shrink-0 text-gray-600 group-hover:text-gray-500 transition-colors" />
 
-                {/* Text */}
                 <div className="flex-1 min-w-0">
-                  <p onClick={()=>router.push(`/dashboard/projects/${item.id}`)} className="text-sm text-gray-300 truncate leading-snug group-hover:text-gray-100 transition-colors">
-                    {item.title || item.name || "Untitled"}
-                  </p>
-                  {item.updatedAt && (
-                    <p className="text-[11px] text-gray-600 mt-0.5 leading-none">
-                      {timeAgo(item.updatedAt)}
-                    </p>
+                  {/* NEW: show inline rename input when this item is being renamed */}
+                  {renamingId === item.id ? (
+                    <RenameInput
+                      itemId={item.id}
+                      currentTitle={item.title || item.name || ""}
+                      onDone={() => setRenamingId(null)}
+                    />
+                  ) : (
+                    <>
+                      <p
+                        onClick={() =>
+                          router.push(`/dashboard/projects/${item.id}`)
+                        }
+                        className="text-sm text-gray-300 truncate leading-snug group-hover:text-gray-100 transition-colors"
+                      >
+                        {item.title || item.name || "Untitled"}
+                      </p>
+                      {item.updatedAt && (
+                        <p className="text-[11px] text-gray-600 mt-0.5 leading-none">
+                          {timeAgo(item.updatedAt)}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 
-                {/* Actions */}
-                <ActionMenu
-                  itemId={item.id}
-                  openId={openActionId}
-                  setOpenId={setOpenActionId}
-                />
+                {/* Hide action menu while renaming this item */}
+                {renamingId !== item.id && (
+                  <ActionMenu
+                    itemId={item.id}
+                    itemTitle={item.title || item.name || ""}
+                    openId={openActionId}
+                    setOpenId={setOpenActionId}
+                    renamingId={renamingId}
+                    setRenamingId={setRenamingId}
+                  />
+                )}
               </div>
             ))}
 
-            {/* Infinite scroll sentinel */}
             <div
               ref={observerRef}
               className="h-8 flex items-center justify-center"

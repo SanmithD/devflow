@@ -27,23 +27,28 @@ model Account {
 }
 
 model User {
-  id                Int         @id @default(autoincrement())
-  email             String      @unique
+  id                Int          @id @default(autoincrement())
+  email             String       @unique
   password          String?
   user_name         String?
   emailVerified     DateTime? // ← add this (NextAuth needs it)
   image             String?
-  role              String      @default("user")
-  isUserAllowed     Boolean     @default(true)
-  isVerified        Boolean     @default(true)
+  role              String       @default("user")
+  isUserAllowed     Boolean      @default(true)
+  isVerified        Boolean      @default(true)
   ipAddress         String?
   subscription_plan String?
-  createdAt         DateTime    @default(now())
+  createdAt         DateTime     @default(now())
   projects          Project[]
   accounts          Account[]
   sessions          Session[]
   ailogs            AILog[]
   userUsages        UserUsage[]
+  mailRecords       MailRecord[]
+  auditTrials       AuditTrial[]
+  archives          Archive[]
+
+  @@index([id, email])
 }
 
 model UserUsage {
@@ -55,6 +60,8 @@ model UserUsage {
   usedOutpoutToken  Int      @default(0)
   resetAt           DateTime
   createdAt         DateTime @default(now())
+
+  @@index([userId, id, createdAt])
 }
 
 model TokenUsage {
@@ -68,14 +75,18 @@ model TokenUsage {
 }
 
 model Project {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   name      String
   userId    Int
   title     String?
   ipAddress String?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  status    Int       @default(1) // 1 -> active, 2 -> archived
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   ailogs    AILog[]
+  archives  Archive[]
+
+  @@index([id, userId, createdAt, title])
 }
 
 model Session {
@@ -101,6 +112,9 @@ model MailRecord {
   value     String
   userId    Int
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model AILog {
@@ -111,8 +125,33 @@ model AILog {
   response  String
   ipAddress String?
   createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, userId, createdAt])
+}
+
+model AuditTrial {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String?
+  table     String?
+  ipAddress String?
+  createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, id, table])
+}
+
+model Archive {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  projectId Int
+  title     String?
+  status    Int      @default(1) // 1 -> active, 2 -> Inactive
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 // npx prisma migrate dev --name add_user_model
