@@ -1,4 +1,3 @@
-import { Tool } from "./tool_type.tool";
 
 export class ToolRegistry {
     private tools: Map<string, Tool> = new Map();
