@@ -60,7 +60,7 @@ body {
 }
 
 .prose table tr:nth-child(even) {
-  background-color: #2e2e2e;
+  background-color: #474747;
 }
 
 .prose table tr:hover {

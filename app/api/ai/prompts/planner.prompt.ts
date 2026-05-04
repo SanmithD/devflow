@@ -6,22 +6,41 @@ export const plannerPrompt = (context: string) => {
     .join("\n");
 
   return `
-You are a planning agent. Your ONLY job is to decide the next action.
+You are a STRICT planning agent. Your ONLY job is to decide the next action.
+
+CONTEXT:
+${context}
 
 AVAILABLE TOOLS:
 ${toolDescriptions}
 
-RULES:
-- Output ONLY a single raw JSON object. No markdown, no backticks, no explanation.
-- If you need external/real-time data → use a tool.
-- If you have enough information to answer → use "final".
+HARD RULES (NO EXCEPTIONS):
+- You MUST return ONLY ONE valid JSON object.
+- You MUST NOT return anything outside JSON (no text, no explanation, no markdown).
+- Your response MUST strictly match one of the two formats below.
+- You MUST choose ONLY ONE: either "tool" OR "final".
+- NEVER invent tools. Use ONLY tools listed above.
+- If external or real-time data is required → choose "tool".
+- If enough information is already available → choose "final".
+- If a required tool does not exist → choose "final".
+- DO NOT assume or hallucinate missing data.
 
-OUTPUT FORMAT:
+ALLOWED OUTPUTS ONLY:
 
-Tool call:
-{"action":"tool","tool":"web_search","input":"your search query","finalAnswer":null}
+1. Tool call:
+{"action":"tool","tool":"<exact_tool_name>","input":"<string>"}
 
-Final answer:
-{"action":"final","tool":null,"input":null,"finalAnswer":"your full markdown answer"}
+2. Final answer:
+{"action":"final","tool":null,"input":null}
+
+INVALID RESPONSES (STRICTLY FORBIDDEN):
+- Anything not valid JSON
+- Multiple JSON objects
+- Missing fields
+- Extra fields
+- Markdown or backticks
+- Explanations
+
+Respond now.
   `.trim();
 };

@@ -1,6 +1,7 @@
 import { createAgent } from "../chains/lang_agent.chains";
 import { generateAIResponse } from "../llm/openai.llm";
 import { addSession, getSession } from "../memory/session.memory";
+import { finalAnswerPrompt } from "../prompts/final_answer.prompt";
 import { plannerPrompt } from "../prompts/planner.prompt";
 import { synthesizerPrompt } from "../prompts/synthesizer.prompt"; // 👈 new
 import { retrive } from "../rag/retrive";
@@ -16,7 +17,7 @@ export const runAgent = async (
         const history = getSession(session_id);
         history.push({ role: "user", content: userInput });
 
-        let toolResults = ""; // 👈 accumulate all tool results here
+        let toolResults = ""; // accumulate all tool results here
 
         for (let i = 0; i < 5; i++) {
             if (abortSignal.aborted) return createTextStream("Generation Stopped");
@@ -38,7 +39,7 @@ export const runAgent = async (
                         }
                     ],
                     abortSignal,
-                    toolChoice: "none" // 👈 safe — synthesizer never needs tools
+                    toolChoice: "none" // safe — synthesizer never needs tools
                 });
 
                 // Collect the synthesis
@@ -66,7 +67,7 @@ export const runAgent = async (
                     }
                 ],
                 abortSignal,
-                toolChoice: "none" // 👈 planner also outputs raw JSON, not function calls
+                toolChoice: "none" // planner also outputs raw JSON, not function calls
             });
 
             const reader = plannerStream.getReader();
@@ -96,7 +97,33 @@ export const runAgent = async (
                 // ── Final answer directly from planner ───────────────────────
                 if (decision.action === "final") {
                     if (abortSignal.aborted) return createTextStream("Generation stopped");
-                    const finalAnswer = decision.finalAnswer ?? "No answer";
+
+                    console.log('decision', decision);
+                    const context = await retrive(userInput);
+
+                    console.log('context', context);
+
+                    const finalStream = await generateAIResponse({
+                        messages: [
+                            ...history,
+                            {
+                                role: "system",
+                                content: finalAnswerPrompt(context)
+                            }
+                        ],
+                        abortSignal,
+                        toolChoice: "none"
+                    });
+
+                    const reader = finalStream.getReader();
+                    const decoder = new TextDecoder();
+                    let finalAnswer = "";
+
+                    while(true){
+                        const { done, value } = await reader.read();
+                        if(done) break;
+                        finalAnswer += decoder.decode(value, { stream: true });
+                    }
                     addSession(session_id, { role: "assistant", content: finalAnswer });
                     return createTextStream(finalAnswer, abortSignal);
                 }
@@ -104,6 +131,8 @@ export const runAgent = async (
                 // ── Tool call ────────────────────────────────────────────────
                 if (decision.action === "tool") {
                     if (abortSignal.aborted) return createTextStream("Generation stopped");
+
+                    console.log('decsion', JSON.stringify(decision));
                     if (!decision.tool || !decision.input) {
                         return createTextStream("Tool name or input missing");
                     }
@@ -123,9 +152,9 @@ export const runAgent = async (
                         ? lastMessage.content
                         : JSON.stringify(lastMessage?.content ?? result, null, 2);
 
-                    console.log("✅ Tool result:", resultText.substring(0, 200));
+                    console.log("Tool result:", resultText.substring(0, 200));
 
-                    // 👇 Accumulate — next iteration goes to synthesizer
+                    // Accumulate — next iteration goes to synthesizer
                     toolResults += `\n[${decision.tool}]: ${resultText}`;
 
                     const toolMessage = `Tool (${decision.tool}) returned:\n${resultText}`;

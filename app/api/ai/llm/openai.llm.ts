@@ -6,22 +6,22 @@ type ChatMessage = {
 }
 
 export const generateAIResponse = async (
-    { 
-        messages, 
+    {
+        messages,
         abortSignal,
         toolChoice = "none"
-    }: { 
-        messages: ChatMessage[]; 
-        abortSignal?: AbortSignal 
+    }: {
+        messages: ChatMessage[];
+        abortSignal?: AbortSignal
         toolChoice: "none" | "auto"
     }) => {
     try {
+
         const stream = await ai.chat.completions.create({
             model: "openai/gpt-oss-20b",
             messages: messages,
             stream: true,
             temperature: 0.7,
-            tool_choice: toolChoice
         }, {
             signal: abortSignal
         });
