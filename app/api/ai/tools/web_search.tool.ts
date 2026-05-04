@@ -1,15 +1,6 @@
 import { DynamicTool } from "@langchain/core/tools";
 import axios from "axios";
 
-type SearchResult = {
-    title?: string;
-    snippet?: string;
-    description?: string;
-    url?: string;
-    link?: string;
-    source?: string;
-}
-
 export const webSearchTool = new DynamicTool({
     name: "web_search",
     description: "Use this tool to search the web for current information, general knowledge, specific facts, recent news, or unknown information not in context.",

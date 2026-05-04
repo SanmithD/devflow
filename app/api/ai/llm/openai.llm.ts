@@ -13,7 +13,7 @@ export const generateAIResponse = async (
     }: {
         messages: ChatMessage[];
         abortSignal?: AbortSignal
-        toolChoice: "none" | "auto"
+        toolChoice?: "none" | "auto"
     }) => {
     try {
 
@@ -22,6 +22,8 @@ export const generateAIResponse = async (
             messages: messages,
             stream: true,
             temperature: 0.7,
+            tool_choice: toolChoice,
+            tools: undefined
         }, {
             signal: abortSignal
         });

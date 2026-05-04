@@ -1,46 +1,52 @@
 import { Tools } from "../tools/tool_type.tool";
 
-export const plannerPrompt = (context: string) => {
+export const plannerPrompt = (context: string, userInput: string) => {
   const toolDescriptions = Tools
     .map(tool => `- ${tool.name}: ${tool.description}`)
     .join("\n");
 
   return `
-You are a STRICT planning agent. Your ONLY job is to decide the next action.
+You are a planning agent that returns ONLY JSON text. You do NOT execute tools yourself.
+
+USER INPUT:
+${userInput}
 
 CONTEXT:
 ${context}
 
-AVAILABLE TOOLS:
+AVAILABLE TOOLS (for reference only, you will NOT call these):
 ${toolDescriptions}
 
-HARD RULES (NO EXCEPTIONS):
-- You MUST return ONLY ONE valid JSON object.
-- You MUST NOT return anything outside JSON (no text, no explanation, no markdown).
-- Your response MUST strictly match one of the two formats below.
-- You MUST choose ONLY ONE: either "tool" OR "final".
-- NEVER invent tools. Use ONLY tools listed above.
-- If external or real-time data is required → choose "tool".
-- If enough information is already available → choose "final".
-- If a required tool does not exist → choose "final".
-- DO NOT assume or hallucinate missing data.
+YOUR TASK:
+Analyze the user's question and decide the next action. Return ONLY a JSON object describing your decision.
 
-ALLOWED OUTPUTS ONLY:
+CRITICAL INSTRUCTIONS:
+- Read User query and Context for better understanding.
+- You are ONLY deciding WHAT should happen next
+- You are NOT executing any tools
+- You MUST return ONLY pure JSON text
+- NO function calls, NO tool invocations, NO markdown
+- Do NOT try to call web_search, current_datetime, or any other tool
+- Just return a JSON object describing which tool SHOULD be called (or if the answer is ready)
 
-1. Tool call:
-{"action":"tool","tool":"<exact_tool_name>","input":"<string>"}
+OUTPUT FORMAT (choose ONE):
 
-2. Final answer:
+If a tool is needed:
+{"action":"tool","tool":"exact_tool_name","input":"query for that tool"}
+
+If ready to answer:
 {"action":"final","tool":null,"input":null}
 
-INVALID RESPONSES (STRICTLY FORBIDDEN):
-- Anything not valid JSON
-- Multiple JSON objects
-- Missing fields
-- Extra fields
-- Markdown or backticks
-- Explanations
+EXAMPLES:
 
-Respond now.
+User asks "What's the weather?"
+Your response: {"action":"tool","tool":"web_search","input":"current weather"}
+
+User asks "What is 2+2?"
+Your response: {"action":"final","tool":null,"input":null}
+
+REMEMBER: You are only writing JSON text that describes the plan. You do NOT execute anything.
+
+Respond with ONLY the JSON object now:
   `.trim();
 };

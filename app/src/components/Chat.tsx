@@ -4,6 +4,7 @@ import axios from "axios";
 import {
   ArrowUp,
   Copy,
+  CopyIcon,
   RefreshCw,
   Share2,
   Square,
@@ -237,8 +238,22 @@ function Chat() {
         {messages.map((msg, index) =>
           msg.type === "user" ? (
             <div key={index} className="flex justify-end">
-              <div className="px-4 py-2 rounded-2xl shadow max-w-[70%] bg-gray-800 text-white">
-                <p className="whitespace-pre-wrap">{msg.text}</p>
+              {/* 👇 group added */}
+              <div className="group flex flex-col items-end max-w-[70%]">
+                <div className="px-4 py-2 rounded-2xl shadow bg-gray-800 text-white">
+                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                </div>
+
+                {/* 👇 Copy button (hidden until hover) */}
+                <div className="opacity-0 group-hover:opacity-100 transition mt-1">
+                  <button
+                    title="Copy"
+                    onClick={() => {navigator.clipboard.writeText(msg.text); toast.success('Copied')}}
+                    className="text-xs text-gray-400 hover:text-white"
+                  >
+                    <CopyIcon size={12} />
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
