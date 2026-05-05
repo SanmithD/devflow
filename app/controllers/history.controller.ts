@@ -122,3 +122,38 @@ export const deleteChatHistory = async (req: NextRequest, id: number) => {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export const deleteAllChatHistory = async (req: NextRequest) => {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session) {
+            return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
+        }
+
+        const userId = session.user.id; 
+
+        if(!userId){
+            return NextResponse.json({ message: 'User not found' },{ status: 403 });
+        }
+
+        const ip =
+            req.headers.get("x-forwarded-for")?.split(",")[0] ||
+            req.headers.get("x-real-ip") ||
+            "unknown";
+
+        const historyRepo = new HistoryRepository();
+
+        const response = await historyRepo.deleteAllHistory({ userId: Number(userId), ip });
+
+        if (!response.success) {
+            return NextResponse.json({ message: response.message }, { status: 400 })
+        }
+
+        return NextResponse.json({ message: response.message }, { status: 200 });
+
+    } catch (error) {
+        console.log('server error', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}

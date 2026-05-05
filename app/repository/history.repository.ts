@@ -145,4 +145,47 @@ export class HistoryRepository {
             }
         }
     }
+
+    deleteAllHistory = async ({ userId, ip }: { userId: number; ip: string }) => {
+        try {
+
+            if (!userId) {
+                return {
+                    success: false,
+                    message: 'userId is required',
+                }
+            }
+
+            const res = await prisma.project.deleteMany({
+                where: { userId }
+            });
+
+            if (!res) {
+                return {
+                    success: false,
+                    message: 'Project not found'
+                }
+            }
+
+            await prisma.auditTrial.create({
+                data: {
+                    userId,
+                    action: 'delete all',
+                    table: 'project',
+                    ipAddress: ip
+                }
+            });
+
+            return {
+                success: true,
+                message: 'All Project deleted'
+            }
+        } catch (error) {
+            console.log('Server error', error);
+            return {
+                success: false,
+                message: 'Internal Server error',
+            }
+        }
+    }
 }

@@ -11,6 +11,7 @@ import {
   Pencil,
   Share2,
   Trash2,
+  TrashIcon,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -112,7 +113,7 @@ function ActionMenu({
     setOpenId(null);
     try {
       // FIX 4: archive is likely a POST/PUT, not DELETE — adjust to your API
-      await axios.post(`/api/projects/archive`,{ id: itemId });
+      await axios.post(`/api/projects/archive`, { id: itemId });
       toast.success("Archived");
       queryClient.invalidateQueries({ queryKey: ["history"] });
     } catch (error) {
@@ -304,6 +305,8 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement | null>(null);
+  const [isModelOpen, setIsModelOpen] = useState<boolean>(false);
+  const [isDeleteLoading, setIsDeleteLoading] = useState<boolean>(false);
 
   const fetchHistory = async ({
     pageParam = 40,
@@ -349,8 +352,40 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
 
   const history = data?.pages.flatMap((page) => page.messages) ?? [];
 
+  const handleDeleteAll = async () => {
+    if (!history?.length) {
+      setIsModelOpen(false);
+      toast.error("History already cleared");
+      return;
+    }
+
+    setIsModelOpen(false);
+    setIsDeleteLoading(true);
+
+    try {
+      await axios.delete(`/api/projects/history`);
+      toast.success("Deleted");
+
+      setIsModelOpen(false);
+      await fetchHistory({ pageParam: 40 });
+    } catch (error) {
+      console.error("archive error", error);
+      toast.error("Failed to archive");
+    } finally {
+      setIsDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden no-scrollbar">
+      <div>
+        <button
+          className="cursor-pointer hover:text-red-500 "
+          onClick={() => setIsModelOpen(true)}
+        >
+          <TrashIcon size={18} />
+        </button>
+      </div>
       <div className="flex-1 overflow-y-auto no-scrollbar overscroll-contain px-2 py-2 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
         {isLoading ? (
           <div className="space-y-0.5">
@@ -434,6 +469,31 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
           </>
         )}
       </div>
+
+      {isModelOpen && (
+        <div className="fixed inset-0 z-999 flex items-center justify-center">
+          <div className="p-6 rounded-lg shadow-lg text-center bg-gray-800">
+            <h1 className="mb-4">Are you sure want to delete all history?</h1>
+
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setIsModelOpen(false)}
+                className="px-4 py-2 cursor-pointer bg-gray-500 hover:bg-gray-400 active:bg-gray-600 rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleDeleteAll}
+                disabled={isDeleteLoading}
+                className="px-4 py-2 bg-red-500 cursor-pointer hover:bg-red-400 active:bg-red-600 text-white rounded"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
