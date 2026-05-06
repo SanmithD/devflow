@@ -20,7 +20,7 @@ export const runAgent = async (
         
         // Fetch context ONCE — reused by both planner and final answer
         const context = await retrive(userInput);
-        
+
         let toolResults = "";
 
         for (let i = 0; i < 5; i++) {
@@ -74,7 +74,7 @@ export const runAgent = async (
                 if (done) break;
                 responseText += plannerDecoder.decode(value, { stream: true });
             }
-            console.log("🤖 Planner raw response:", responseText);
+            console.log("Planner raw response:", responseText);
 
             // ── PARSE planner decision ───────────────────────────────────────
             let decision;
