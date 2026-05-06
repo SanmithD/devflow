@@ -1,13 +1,157 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
+
+model Account {
+  id                Int     @id @default(autoincrement())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model User {
+  id                Int          @id @default(autoincrement())
+  email             String       @unique
+  password          String?
+  user_name         String?
+  emailVerified     DateTime? // ← add this (NextAuth needs it)
+  image             String?
+  role              String       @default("user")
+  isUserAllowed     Boolean      @default(true)
+  isVerified        Boolean      @default(true)
+  ipAddress         String?
+  subscription_plan String?
+  createdAt         DateTime     @default(now())
+  projects          Project[]
+  accounts          Account[]
+  sessions          Session[]
+  ailogs            AILog[]
+  userUsages        UserUsage[]
+  mailRecords       MailRecord[]
+  auditTrials       AuditTrial[]
+  archives          Archive[]
+
+  @@index([id, email])
+}
+
+model UserUsage {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  user              User     @relation(fields: [userId], references: [id])
+  monthlyTokenLimit Int      @default(15000)
+  usedInputToken    Int      @default(0)
+  usedOutpoutToken  Int      @default(0)
+  resetAt           DateTime
+  createdAt         DateTime @default(now())
+
+  @@index([userId, id, createdAt])
+}
+
+model TokenUsage {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+  createdAt    DateTime @default(now())
+}
+
+model Project {
+  id        Int       @id @default(autoincrement())
+  name      String
+  userId    Int
+  title     String?
+  ipAddress String?
+  status    Int       @default(1) // 1 -> active, 2 -> archived
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ailogs    AILog[]
+  archives  Archive[]
+
+  @@index([id, userId, createdAt, title])
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Verification {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model MailRecord {
+  id        Int      @id @default(autoincrement())
+  table     String
+  value     String
+  userId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AILog {
+  id        Int      @unique @default(autoincrement())
+  userId    Int
+  projectId Int
+  input     String
+  response  String
+  ipAddress String?
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, userId, createdAt])
+}
+
+model AuditTrial {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String?
+  table     String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, id, table])
+}
+
+model Archive {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  projectId Int
+  title     String?
+  status    Int      @default(1) // 1 -> active, 2 -> Inactive
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// npx prisma migrate dev --name add_user_model
