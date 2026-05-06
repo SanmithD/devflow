@@ -1,11 +1,10 @@
-import { createAgent } from "../chains/lang_agent.chains";
-import { generateAIResponse } from "../llm/openai.llm";
 import { addSession, getSession } from "../memory/session.memory";
-import { finalAnswerPrompt } from "../prompts/final_answer.prompt";
-import { plannerPrompt } from "../prompts/planner.prompt";
-import { synthesizerPrompt } from "../prompts/synthesizer.prompt";
 import { retrive } from "../rag/retrive";
 import "../tools";
+import { generateFinalResponse } from "../utils/final_decision.util";
+import { plannerTextGenerator, synthesizerGenerator } from "../utils/planner_response.util";
+import { createTextStream } from "../utils/text_stream.util";
+import { generateToolResponse } from "../utils/tool_decision.util";
 import { AgentDecisionSchema } from "./schema.agent";
 
 export const runAgent = async (
@@ -15,29 +14,35 @@ export const runAgent = async (
 ) => {
     try {
         const history = getSession(session_id);
+        console.log('history', history);
+
         history.push({ role: "user", content: userInput });
+        
         // Fetch context ONCE — reused by both planner and final answer
         const context = await retrive(userInput);
+        
         let toolResults = "";
+
         for (let i = 0; i < 5; i++) {
             if (abortSignal.aborted) return createTextStream("Generation Stopped");
+
             console.log(`\n🔄 Agent iteration ${i + 1}`);
             // ── SYNTHESIZER: runs only after a tool has been called ──────────
             if (toolResults) {
-                console.log("🧠 Synthesizing final answer from tool results...");
-                const synthesisStream = await generateAIResponse({
-                    messages: [
-                        ...history,
-                        {
-                            role: "system",
-                            content: synthesizerPrompt(toolResults),
-                        },
-                    ],
+                console.log("Synthesizing final answer from tool results...");
+
+                const result = await synthesizerGenerator({
+                    toolResults,
                     abortSignal,
-                    toolChoice: "none",
+                    session_id
                 });
-                const reader = synthesisStream.getReader();
-                const decoder = new TextDecoder();
+
+                if (!result) {
+                    throw new Error("Planner failed");
+                }
+
+                const { reader, decoder } = result.data;
+
                 let finalAnswer = "";
                 while (true) {
                     const { done, value } = await reader.read();
@@ -49,19 +54,20 @@ export const runAgent = async (
             }
             // ── PLANNER: decides "final" or "tool" ──────────────────────────
             console.log("🗺️ Running planner...");
-            const plannerStream = await generateAIResponse({
-                messages: [
-                    ...history,
-                    {
-                        role: "system",
-                        content: plannerPrompt(context, userInput),
-                    },
-                ],
+
+            const result = await plannerTextGenerator({
+                userInput,
+                context,
                 abortSignal,
-                toolChoice: "none",
+                session_id
             });
-            const plannerReader = plannerStream.getReader();
-            const plannerDecoder = new TextDecoder();
+
+            if (!result) {
+                throw new Error("Planner failed");
+            }
+
+            const { plannerReader, plannerDecoder } = result.data;
+
             let responseText = "";
             while (true) {
                 const { done, value } = await plannerReader.read();
@@ -69,6 +75,7 @@ export const runAgent = async (
                 responseText += plannerDecoder.decode(value, { stream: true });
             }
             console.log("🤖 Planner raw response:", responseText);
+
             // ── PARSE planner decision ───────────────────────────────────────
             let decision;
             try {
@@ -76,70 +83,41 @@ export const runAgent = async (
                     .replace(/```json\n?/g, "")
                     .replace(/```\n?/g, "")
                     .trim();
+
                 const parsed = JSON.parse(cleaned);
+
                 decision = AgentDecisionSchema.parse(parsed);
                 console.log("📋 Decision:", decision);
+
             } catch (parseError) {
                 console.error("❌ Failed to parse planner decision:", parseError);
                 // Planner returned something unparseable — stream it as-is
                 addSession(session_id, { role: "assistant", content: responseText });
                 return createTextStream(responseText, abortSignal);
             }
+
             // ── FINAL: pass user query + context to the ReAct agent ─────────
             if (decision.action === "final") {
                 if (abortSignal.aborted) return createTextStream("Generation stopped");
-                console.log("✅ Decision is FINAL — invoking ReAct agent...");
-                const executor = await createAgent();
-                if (!executor) return createTextStream("Failed to create agent executor");
-                // Build a rich prompt so the agent has context
-                const agentInput = finalAnswerPrompt(context, userInput);
-                // ^ update your finalAnswerPrompt to accept userInput too (see note below)
-                const result = await executor.invoke(
-                    { messages: [{ role: "user", content: agentInput }] },
-                    { signal: abortSignal }
-                );
-                const lastMessage = result.messages[result.messages.length - 1];
-                const finalAnswer =
-                    typeof lastMessage?.content === "string"
-                        ? lastMessage.content
-                        : JSON.stringify(lastMessage?.content ?? result, null, 2);
-                console.log("💬 Final answer from agent:", finalAnswer.substring(0, 200));
-                addSession(session_id, { role: "assistant", content: finalAnswer });
-                return createTextStream(finalAnswer, abortSignal);
+                return await generateFinalResponse({
+                    session_id,
+                    context,
+                    userInput,
+                    abortSignal
+                })
             }
             // ── TOOL: delegate to ReAct agent with tool-use enabled ──────────
             if (decision.action === "tool") {
                 if (abortSignal.aborted) return createTextStream("Generation stopped");
-                // if (!decision.tool || !decision.input) {
-                //     return createTextStream("Tool name or input missing");
-                // }
-                console.log(`🔧 Tool: ${decision.tool} | Input: ${decision.input}`);
 
-                const executor = await createAgent();
-                if (!executor) return createTextStream("Failed to create agent executor");
+                toolResults += await generateToolResponse({
+                    session_id,
+                    tool: decision.tool,
+                    userInput,
+                    abortSignal
+                });
 
-                const result = await executor.invoke(
-                    { messages: [{ role: "user", content: userInput }] },
-                    { signal: abortSignal }
-                );
-
-                const lastMessage = result.messages[result.messages.length - 1];
-
-                const resultText =
-                    typeof lastMessage?.content === "string"
-                        ? lastMessage.content
-                        : JSON.stringify(lastMessage?.content ?? result, null, 2);
-
-                console.log("🔧 Tool result:", resultText.substring(0, 200));
-
-                toolResults += `\n[${decision.tool}]: ${resultText}`;
-
-                const toolMessage = `Tool (${decision.tool}) returned:\n${resultText}`;
-
-                addSession(session_id, { role: "assistant", content: toolMessage });
-                
-                history.push({ role: "assistant", content: toolMessage });
-                continue; // next iteration → synthesizer branch
+                continue;
             }
         }
         return createTextStream("Agent stopped at max iterations");
@@ -149,20 +127,3 @@ export const runAgent = async (
         return null;
     }
 };
-function createTextStream(text: string, abortSignal?: AbortSignal): ReadableStream {
-    const encoder = new TextEncoder();
-    return new ReadableStream({
-        async start(controller) {
-            const chunkSize = 5;
-            for (let i = 0; i < text.length; i += chunkSize) {
-                if (abortSignal?.aborted) {
-                    controller.close();
-                    return;
-                }
-                controller.enqueue(encoder.encode(text.slice(i, i + chunkSize)));
-                await new Promise((resolve) => setTimeout(resolve, 10));
-            }
-            controller.close();
-        },
-    });
-}
