@@ -21,6 +21,8 @@ YOUR TASK:
 Analyze the user's question and decide the next action. Return ONLY a JSON object describing your decision.
 
 CRITICAL INSTRUCTIONS:
+- Use Emojies if anywhere needed or user aksed.
+- To Describe emotions use Emojies.
 - Read User query and Context for better understanding.
 - You are ONLY deciding WHAT should happen next
 - You are NOT executing any tools

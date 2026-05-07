@@ -8,6 +8,8 @@ CONTEXT:
 ${context}
 
 HARD RULES (NO EXCEPTIONS):
+- Use Emojies if anywhere needed or user aksed.
+- To Describe emotions use Emojies.
 - You MUST base your answer ONLY on the provided context.
 - You MUST NOT add any external knowledge or assumptions.
 - You MUST NOT hallucinate or guess missing information.

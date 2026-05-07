@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Copy,
   CopyIcon,
+  LoaderIcon,
   RefreshCw,
   Share2,
   Square,
@@ -238,13 +239,13 @@ function Chat() {
         {messages.map((msg, index) =>
           msg.type === "user" ? (
             <div key={index} className="flex justify-end">
-              {/* 👇 group added */}
+              {/* group added */}
               <div className="group flex flex-col items-end max-w-[70%]">
                 <div className="px-4 py-2 rounded-2xl shadow bg-gray-800 text-white">
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
 
-                {/* 👇 Copy button (hidden until hover) */}
+                {/* Copy button (hidden until hover) */}
                 <div className="opacity-0 group-hover:opacity-100 transition mt-1">
                   <button
                     title="Copy"
@@ -266,6 +267,11 @@ function Chat() {
                       {msg.text}
                     </ReactMarkdown>
                   </div>
+                  {
+                    loading && (
+                      <LoaderIcon className="animate-spin" size={14} />
+                    )
+                  }
                 </div>
 
                 {/* Only show actions once the message has content */}
