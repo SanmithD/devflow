@@ -1,4 +1,4 @@
-import { deleteArchive, getAllArchive, updateArchive } from "@/app/controllers/archive.controller";
+import { deleteArchive, insertArchive, updateArchive } from "@/app/controllers/archive.controller";
 import { NextRequest } from "next/server";
 
 export const DELETE = async (req: NextRequest, context: { params: Promise<{ id: string }> }) => {
@@ -11,5 +11,5 @@ export const PUT = async (req: NextRequest) => {
 }
 
 export const POST = async (req: NextRequest) => {
-    return await getAllArchive(req);
+    return await insertArchive(req);
 }

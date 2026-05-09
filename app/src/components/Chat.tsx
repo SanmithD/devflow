@@ -262,7 +262,7 @@ function Chat() {
             <div key={index} className="flex justify-start">
               <div className="group flex flex-col max-w-[70%]">
                 <div className="px-4 py-2 rounded-2xl shadow bg-transparent text-white">
-                  <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-2 prose-p:my-1 prose-table:text-sm">
+                  <div className="prose prose-sm text-sm/6 max-w-none md:tracking-wide prose-headings:mt-3 prose-headings:mb-2 prose-p:my-1 prose-table:text-sm">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {msg.text}
                     </ReactMarkdown>

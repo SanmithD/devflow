@@ -101,7 +101,7 @@ function ActionMenu({
     setOpenId(null);
     try {
       // FIX 3: bookmark is likely a POST/PUT, not DELETE — adjust to your API
-      await axios.post(`/api/projects/bookmark/${itemId}`);
+      await axios.post(`/api/projects/bookmark/${itemId}`,{ id: itemId });
       toast.success("Bookmarked");
     } catch (error) {
       console.error("bookmark error", error);
@@ -113,7 +113,7 @@ function ActionMenu({
     setOpenId(null);
     try {
       // FIX 4: archive is likely a POST/PUT, not DELETE — adjust to your API
-      await axios.post(`/api/projects/archive`, { id: itemId });
+      await axios.post(`/api/projects/archive/${itemId}`, { id: itemId });
       toast.success("Archived");
       queryClient.invalidateQueries({ queryKey: ["history"] });
     } catch (error) {

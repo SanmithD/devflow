@@ -98,6 +98,7 @@ export const updateArchive = async (req: NextRequest) => {
 
         const id = Number(body.id);
         const title = body.title;
+        const status = body.status;
 
         console.log('id', id, 'title', title, 'userId', userId);
 
@@ -112,7 +113,7 @@ export const updateArchive = async (req: NextRequest) => {
 
         const archiveRepo = new ArchiveRepository();
 
-        const response = await archiveRepo.updateArchive({ id, userId: Number(userId), title, ip });
+        const response = await archiveRepo.updateArchive({ id, userId: Number(userId), title, ip, status });
 
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })
@@ -148,6 +149,41 @@ export const deleteArchive = async (req: NextRequest, id: number) => {
         const archiveRepo = new ArchiveRepository();
 
         const response = await archiveRepo.deleteArchive({ id, userId: Number(userId), ip });
+
+        if (!response.success) {
+            return NextResponse.json({ message: response.message }, { status: 400 })
+        }
+
+        return NextResponse.json({ message: response.message }, { status: 200 });
+
+    } catch (error) {
+        console.log('server error', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export const deleteAllArchive = async (req: NextRequest) => {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session) {
+            return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
+        }
+
+        const userId = session.user.id; 
+
+        if(!userId){
+            return NextResponse.json({ message: 'User not found' },{ status: 403 });
+        }
+
+        const ip =
+            req.headers.get("x-forwarded-for")?.split(",")[0] ||
+            req.headers.get("x-real-ip") ||
+            "unknown";
+
+        const historyRepo = new ArchiveRepository();
+
+        const response = await historyRepo.deleteAllSavedArchive({ userId: Number(userId), ip });
 
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })

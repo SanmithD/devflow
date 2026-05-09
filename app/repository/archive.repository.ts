@@ -118,7 +118,7 @@ export class ArchiveRepository {
         }
     }
 
-    updateArchive = async ({ id, userId, title, ip }: { id: number; userId: number; title: string; ip: string }) => {
+    updateArchive = async ({ id, userId, title, ip, status }: { id: number; userId: number; title: string; ip: string; status: number; }) => {
         try {
 
             if (!id || !userId || !title) {
@@ -128,20 +128,9 @@ export class ArchiveRepository {
                 }
             }
 
-            const project = await prisma.archive.findFirst({
-                where: { id, userId, status: 1 }
-            });
-
-            if (!project) {
-                return {
-                    success: false,
-                    message: 'Project not found or unauthorized'
-                };
-            }
-
             const res = await prisma.archive.update({
                 where: { id },
-                data: { title }
+                data: { title, status }
             });
 
             if (!res) {
@@ -149,6 +138,14 @@ export class ArchiveRepository {
                     success: false,
                     message: 'Project not found'
                 }
+            }
+
+            // if status is 2 Inactive
+            if(status === 2){
+                await prisma.project.update({
+                    where: { id: id, userId },
+                    data: { status: 1 }
+                })
             }
 
             // create audit trial
@@ -207,6 +204,49 @@ export class ArchiveRepository {
             return {
                 success: true,
                 message: 'Project deleted'
+            }
+        } catch (error) {
+            console.log('Server error', error);
+            return {
+                success: false,
+                message: 'Internal Server error',
+            }
+        }
+    }
+
+    deleteAllSavedArchive = async ({ userId, ip }: { userId: number; ip: string }) => {
+        try {
+
+            if (!userId) {
+                return {
+                    success: false,
+                    message: 'userId is required',
+                }
+            }
+
+            const res = await prisma.archive.deleteMany({
+                where: { userId }
+            });
+
+            if (!res) {
+                return {
+                    success: false,
+                    message: 'Project not found'
+                }
+            }
+
+            await prisma.auditTrial.create({
+                data: {
+                    userId,
+                    action: 'delete all',
+                    table: 'archive',
+                    ipAddress: ip
+                }
+            });
+
+            return {
+                success: true,
+                message: 'All Archive Project deleted'
             }
         } catch (error) {
             console.log('Server error', error);

@@ -6,9 +6,9 @@ import { useState } from "react";
 import Chat from "../src/components/Chat";
 import ChatHistory from "../src/components/ChatHistory";
 import Navbar from "../src/components/Navbar";
+import Details from "../src/components/project-deatils/Details";
 
 export default function DashboardPage() {
-
   const router = useRouter();
 
   const [showRight, setShowRight] = useState(true);
@@ -40,8 +40,11 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <div>
-                  <button onClick={()=>router.push('/dashboard')} className="text-[16px] w-full px-4 py-1 rounded-md flex items-center gap-2 cursor-pointer font-medium hover:bg-gray-700 active:bg-gray-800 mb-2 tracking-wider md:mb-4">
-                    <PlusCircle size={18} /> <span>New chat</span> 
+                  <button
+                    onClick={() => router.push("/dashboard")}
+                    className="text-[16px] w-full px-4 py-1 rounded-md flex items-center gap-2 cursor-pointer font-medium hover:bg-gray-700 active:bg-gray-800 mb-2 tracking-wider md:mb-4"
+                  >
+                    <PlusCircle size={18} /> <span>New chat</span>
                   </button>
                 </div>
 
@@ -90,11 +93,15 @@ export default function DashboardPage() {
                   {showLeft ? <ArrowBigRight /> : <ArrowBigLeft />}
                 </button>
                 <h1 className="text-[20px] md:text-2xl font-medium font-serif mb-2 tracking-wider md:mb-4">
-                  Bookmarks
+                  Details
                 </h1>
               </div>
 
-              {/* <ChatHistory isActive={true} /> */}
+              <div className="h-screen no-scrollbar">
+                {" "}
+                {/* or h-full on a flex child */}
+                <Details isActive={true} />
+              </div>
             </div>
           )}
           <button
