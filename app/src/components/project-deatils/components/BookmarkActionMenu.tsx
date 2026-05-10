@@ -6,11 +6,12 @@ import axios from "axios";
 
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Bookmark, MoreHorizontal, Share2, Trash2, Upload } from "lucide-react";
+import { MoreHorizontal, Share2, Trash2, Upload } from "lucide-react";
 
 import toast from "react-hot-toast";
+import { BookmarkActionTypes } from "../types/Bookmark_type";
 
-function ArchiveActionMenu({ itemId, openActionId, setOpenActionId }: any) {
+function BookmarkActionMenu({ itemId, openActionId, setOpenActionId }: BookmarkActionTypes) {
   const queryClient = useQueryClient();
 
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -37,12 +38,12 @@ function ArchiveActionMenu({ itemId, openActionId, setOpenActionId }: any) {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`/api/projects/archive/${itemId}`);
+      await axios.delete(`/api/projects/bookmark/${itemId}`);
 
-      toast.success("Deleted");
+      toast.success("Removed");
 
       queryClient.invalidateQueries({
-        queryKey: ["archive"],
+        queryKey: ["bookmark"],
       });
     } catch (error) {
       console.log(error);
@@ -52,50 +53,30 @@ function ArchiveActionMenu({ itemId, openActionId, setOpenActionId }: any) {
     }
   };
 
-  const handleBookmark = async () => {
-    try {
-      const res = await axios.post(`/api/projects/bookmark/${itemId}`,{ id: Number(itemId) });
-      console.log('res', res);
-
-      toast.success("Bookmarked");
-    } catch (error) {
-      console.log(error);
-      toast.error("Failed to bookmark");
-    } finally {
-      closeMenu();
-    }
-  };
-
-  const handleUnarchive = async () => {
-    try {
-      await axios.put(`/api/projects/archive/${itemId}`, {
-        id: Number(itemId),
-        status: 2,
-      });
-
-      toast.success("Unarchived");
-
-      queryClient.invalidateQueries({
-        queryKey: ["archive"],
-      });
-    } catch (error) {
-      console.log("server error", error);
-      toast.error("Failed to unarchive");
-    } finally {
-      closeMenu();
-    }
-  };
+  const handleArchive = async () => {
+      try {
+        await axios.post(`/api/projects/archive/${itemId}`, {
+          id: Number(itemId),
+        });
+  
+        toast.success("Archived");
+  
+        queryClient.invalidateQueries({
+          queryKey: ["bookmark"],
+        });
+      } catch (error) {
+        console.log("server error", error);
+        toast.error("Failed to unarchive");
+      } finally {
+        closeMenu();
+      }
+    };
 
   const actions = [
     {
-      icon: Bookmark,
-      label: "Bookmark",
-      action: handleBookmark,
-    },
-    {
       icon: Upload,
-      label: "Unarchive",
-      action: handleUnarchive,
+      label: "Archive",
+      action: handleArchive,
     },
     {
       icon: Share2,
@@ -173,4 +154,4 @@ opacity-0 group-hover:opacity-100
   );
 }
 
-export default ArchiveActionMenu;
+export default BookmarkActionMenu;

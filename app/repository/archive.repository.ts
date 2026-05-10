@@ -17,22 +17,57 @@ export class ArchiveRepository {
                 where: { id, userId, status: 1 }
             });
 
-            if (!isProjectExists) {
-                return {
-                    success: false,
-                    message: 'Project not found',
-                }
-            }
+            let isProjectExistsInBookmark;
+            let moveToArchive;
 
-            // create archive document
-            const moveToArchive = await prisma.archive.create({
-                data: {
-                    userId,
-                    title: isProjectExists?.title,
-                    status: 1,
-                    projectId: id
+            if (!isProjectExists) {
+                isProjectExistsInBookmark = await prisma.bookmark.findFirst({
+                    where: { id, userId }
+                });
+
+                if (!isProjectExistsInBookmark) {
+                    return {
+                        success: false,
+                        message: 'Project not found',
+                    }
                 }
-            });
+
+                moveToArchive = await prisma.archive.create({
+                    data: {
+                        userId,
+                        title: isProjectExistsInBookmark?.title,
+                        projectId: isProjectExistsInBookmark?.projectId,
+                        status: 1
+                    }
+                });
+
+                // update project status
+                await prisma.project.update({
+                    where: { id: isProjectExistsInBookmark.projectId },
+                    data: {
+                        status: 2 // archived
+                    }
+                });
+
+            } else {
+                // create archive document
+                moveToArchive = await prisma.archive.create({
+                    data: {
+                        userId,
+                        title: isProjectExists?.title,
+                        projectId: id,
+                        status: 1
+                    }
+                });
+
+                // update project status
+                await prisma.project.update({
+                    where: { id },
+                    data: {
+                        status: 2 // archived
+                    }
+                });
+            }
 
             if (!moveToArchive) {
                 return {
@@ -40,14 +75,6 @@ export class ArchiveRepository {
                     message: 'Fail to move archive',
                 }
             }
-
-            // update project status
-            await prisma.project.update({
-                where: { id },
-                data: {
-                    status: 2 // archived
-                }
-            });
 
             // create audit trail
             await prisma.auditTrial.create({
@@ -118,19 +145,19 @@ export class ArchiveRepository {
         }
     }
 
-    updateArchive = async ({ id, userId, title, ip, status }: { id: number; userId: number; title: string; ip: string; status: number; }) => {
+    updateArchive = async ({ id, userId, ip, updateArchiveArgs }: { id: number; userId: number; updateArchiveArgs: any; ip: string;}) => {
         try {
 
-            if (!id || !userId || !title) {
+            if (!id || !userId) {
                 return {
                     success: false,
-                    message: 'Id, Title and userId is required',
+                    message: 'Id and userId is required',
                 }
             }
 
             const res = await prisma.archive.update({
                 where: { id },
-                data: { title, status }
+                data: { ...updateArchiveArgs }
             });
 
             if (!res) {
@@ -141,9 +168,9 @@ export class ArchiveRepository {
             }
 
             // if status is 2 Inactive
-            if(status === 2){
+            if (updateArchiveArgs?.status === 2) {
                 await prisma.project.update({
-                    where: { id: id, userId },
+                    where: { id: res?.projectId, userId },
                     data: { status: 1 }
                 })
             }

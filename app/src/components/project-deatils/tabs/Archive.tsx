@@ -103,10 +103,8 @@ function Archive({ isActive }: ArchiveProps) {
   return (
     <>
       {" "}
-      <div className="h-full flex flex-col overflow-hidden">
+      <div className="h-full flex flex-col overflow-hidden no-scrollbar">
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
-          <h2 className="text-sm font-medium text-gray-300">Archive</h2>
-
           <button
             onClick={() => setIsDeleteModalOpen(true)}
             className="

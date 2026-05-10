@@ -22,6 +22,8 @@ export const addNewBookmark = async (req: NextRequest) => {
         // project id
         const id = Number(body.id);
 
+        console.log('id', id);
+        
         if (!id || typeof id !== 'number' || id <= 0) {
             return NextResponse.json({ message: 'Invalid id' }, { status: 400 })
         };

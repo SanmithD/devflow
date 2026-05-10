@@ -14,24 +14,42 @@ export class BookmarkRepository {
 
             // find is project exits
             const isProjectExists = await prisma.project.findFirst({
-                where: { id, userId, status: 1 }
+                where: { id, userId }
             });
+
+            let isProjectExistsInArchive;
+            let moveToArchive;
 
             if (!isProjectExists) {
-                return {
-                    success: false,
-                    message: 'Project not found',
-                }
-            }
+                isProjectExistsInArchive = await prisma.archive.findFirst({
+                    where: { id, userId }
+                });
 
-            // create archive document
-            const moveToArchive = await prisma.bookmark.create({
-                data: {
-                    userId,
-                    title: isProjectExists?.title,
-                    projectId: id
+                if (!isProjectExistsInArchive) {
+                    return {
+                        success: false,
+                        message: 'Project not found',
+                    }
                 }
-            });
+
+                moveToArchive = await prisma.bookmark.create({
+                    data: {
+                        userId,
+                        title: isProjectExistsInArchive?.title,
+                        projectId: isProjectExistsInArchive?.projectId
+                    }
+                });
+
+            } else {
+                // create archive document
+                moveToArchive = await prisma.bookmark.create({
+                    data: {
+                        userId,
+                        title: isProjectExists?.title,
+                        projectId: id
+                    }
+                });
+            }
 
             if (!moveToArchive) {
                 return {

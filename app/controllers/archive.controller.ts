@@ -100,8 +100,6 @@ export const updateArchive = async (req: NextRequest) => {
         const title = body.title;
         const status = body.status;
 
-        console.log('id', id, 'title', title, 'userId', userId);
-
         if (!id || typeof id !== 'number' || id <= 0) {
             return NextResponse.json({ message: 'Invalid id' }, { status: 400 })
         };
@@ -113,7 +111,10 @@ export const updateArchive = async (req: NextRequest) => {
 
         const archiveRepo = new ArchiveRepository();
 
-        const response = await archiveRepo.updateArchive({ id, userId: Number(userId), title, ip, status });
+        const response = await archiveRepo.updateArchive({ id, userId: Number(userId), updateArchiveArgs: {
+            title,
+            status
+        }, ip });
 
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })
