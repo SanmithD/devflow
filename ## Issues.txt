@@ -1,0 +1,7 @@
+## Issues
+
+1. Need to add redis in System Api
+2. Need to Complete RAG
+3. PDF and Other file reading need to implement
+4. Search Functionality need to create for History, Archive and Bookmarks
+5. We Search need to fix correctly

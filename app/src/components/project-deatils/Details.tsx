@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Archive from "./tabs/Archive";
 import Bookmark from "./tabs/Bookmark";
+import SystemInfo from "./tabs/SystemInfo";
 
 type TabType = "archive" | "bookmark" | "system";
 
@@ -78,9 +79,7 @@ function Details({ isActive }: { isActive: boolean }) {
         )}
 
         {activeTab === "system" && (
-          <div className="text-sm text-zinc-400">
-            System content goes here...
-          </div>
+          <SystemInfo isActive={isActive} />
         )}
       </div> 
     </div>

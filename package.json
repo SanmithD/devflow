@@ -50,9 +50,11 @@
     "react-dom": "19.2.4",
     "react-hot-toast": "^2.6.0",
     "react-markdown": "^10.1.0",
+    "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
     "resend": "^6.12.2",
     "serpapi": "^2.2.1",
+    "systeminformation": "^5.31.6",
     "tiktoken": "^1.0.22",
     "zod": "^4.3.6"
   },
