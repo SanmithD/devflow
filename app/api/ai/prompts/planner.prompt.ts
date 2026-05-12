@@ -28,7 +28,7 @@ CRITICAL INSTRUCTIONS:
 - You are NOT executing any tools
 - You MUST return ONLY pure JSON text
 - NO function calls, NO tool invocations, NO markdown
-- Do NOT try to call web_search, current_datetime, or any other tool
+- Do NOT try to call web_search, current_datetime, system_info or any other tool
 - Just return a JSON object describing which tool SHOULD be called (or if the answer is ready)
 
 OUTPUT FORMAT (choose ONE):
@@ -39,10 +39,31 @@ If a tool is needed:
 If ready to answer:
 {"action":"final","tool":null,"input":null}
 
+If the user asks about:
+- CPU
+- GPU
+- RAM
+- system specs
+- storage
+- OS
+- network
+- hardware
+- cores
+- performance
+
+You MUST return:
+{
+  "action": "tool",
+  "tool": "system_info",
+  "input": "<relevant query>"
+}
+
+Do NOT answer from general knowledge.
+
 EXAMPLES:
 
 User asks "What's the weather?"
-Your response: {"action":"tool","tool":"web_search","input":"current weather"}
+Your response: {"action":"tool","tool":"{tool_name}","input":"current weather"}
 
 User asks "What is 2+2?"
 Your response: {"action":"final","tool":null,"input":null}

@@ -71,15 +71,23 @@ export class AgentChatRepository {
                     let isClosed = false;
 
                     const safeClose = () => {
-                        if (!isClosed) {
+                        if (isClosed) return;
+
+                        try {
                             isClosed = true;
                             controller.close();
-                        }
+                        } catch { }
                     };
 
                     const safeEnqueue = (data: Uint8Array) => {
-                        if (!isClosed) {
+                        if (isClosed || abortSignal.aborted) return;
+
+                        try {
                             controller.enqueue(data);
+                        } catch (err) {
+                            isClosed = true;
+                            console.log(err);
+                            console.log("enqueue skipped");
                         }
                     };
 
@@ -105,7 +113,7 @@ export class AgentChatRepository {
                         const reader = agentStream.getReader();
                         const decoder = new TextDecoder();
 
-                        while (true) {
+                        while (!abortSignal.aborted) {
                             if (abortSignal.aborted) {
                                 reader.cancel();
                                 safeClose();

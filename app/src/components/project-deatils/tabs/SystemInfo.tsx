@@ -243,47 +243,26 @@ function Sparkline({
 }
 
 // CPU Card
-function CpuCard({
-  cpu,
-}: {
-  cpu: SystemInfoType["cpu"];
-}) {
-
+function CpuCard({ cpu }: { cpu: SystemInfoType["cpu"] }) {
   const pct = parsePct(cpu.usage);
 
   const color = getBarColor(pct);
 
-  const [cpuHistory, setCpuHistory] =
-    useState<number[]>(
-      () => Array(40).fill(0)
-    );
+  const [cpuHistory, setCpuHistory] = useState<number[]>(() =>
+    Array(40).fill(0),
+  );
 
   useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setCpuHistory((prev) => [...prev.slice(1), pct]);
+    });
 
-    const frame =
-      requestAnimationFrame(() => {
-
-        setCpuHistory((prev) => [
-
-          ...prev.slice(1),
-
-          pct,
-
-        ]);
-
-      });
-
-    return () =>
-      cancelAnimationFrame(frame);
-
+    return () => cancelAnimationFrame(frame);
   }, [pct]);
 
   return (
     <Card>
-
-      <CardLabel icon="ti-cpu">
-        CPU
-      </CardLabel>
+      <CardLabel icon="ti-cpu">CPU</CardLabel>
 
       <div
         className="
@@ -329,11 +308,7 @@ function CpuCard({
         ]}
       />
 
-      <Sparkline
-        data={cpuHistory}
-        color={color}
-      />
-
+      <Sparkline data={cpuHistory} color={color} />
     </Card>
   );
 }
@@ -652,8 +627,12 @@ function SystemInfo({ isActive }: { isActive: boolean }) {
     if (!isActive) return;
 
     let mounted = true;
+    let interval: NodeJS.Timeout;
 
     const poll = async () => {
+      // stop polling if tab hidden
+      if (document.hidden) return;
+
       try {
         const response = await axios.get("/api/system");
 
@@ -661,11 +640,12 @@ function SystemInfo({ isActive }: { isActive: boolean }) {
 
         requestAnimationFrame(() => {
           setData(response.data.data);
-
           setError(null);
         });
       } catch (err) {
         console.log(err);
+
+        if (!mounted) return;
 
         requestAnimationFrame(() => {
           setError("Failed to fetch system data");
@@ -673,14 +653,38 @@ function SystemInfo({ isActive }: { isActive: boolean }) {
       }
     };
 
-    poll();
+    let startPolling: any;
 
-    const interval = setInterval(poll, 3000);
+    if (!data || data !== null || data !== undefined) {
+      startPolling = () => {
+        clearInterval(interval);
+
+        interval = setInterval(poll, 3000);
+
+        poll();
+      };
+
+      return startPolling;
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        startPolling();
+      }
+    };
+
+    startPolling();
+
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       mounted = false;
 
       clearInterval(interval);
+
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [isActive]);
 

@@ -40,7 +40,7 @@ function Details({ isActive }: { isActive: boolean }) {
   }, [activeTab]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-zinc-950 text-white rounded-xl">
+    <div className="h-full flex flex-col overflow-hidden text-white rounded-xl">
 
       {/* Tabs Header */}
       <div className="flex items-center overflow-x-auto border-b border-zinc-800 no-scrollbar">
