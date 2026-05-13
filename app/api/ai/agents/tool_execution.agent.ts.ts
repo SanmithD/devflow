@@ -16,6 +16,10 @@ export const runToolExecution = async (
 ): Promise<string> => {
     try {
 
+        console.log('input', input);
+        console.log('tool', tool);
+        console.log('is running inside tool exection')
+
         if(abortSignal.aborted) return 'Execution aborted';
 
         const selectedTool = Tools.find(t => t.name === tool);
@@ -23,6 +27,8 @@ export const runToolExecution = async (
         if(!selectedTool){
             return 'Tool not found'
         }
+
+        console.log('selected tool', selectedTool);
 
         console.log(`🔧 Executing tool: ${tool} with input: ${input}`);
         const result = await selectedTool.invoke(input);

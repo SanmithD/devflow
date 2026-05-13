@@ -52,7 +52,11 @@ export const runPlanner = async (
             .replace(/```\n?/g, "")
             .trim();
 
+        console.log('cleaned res', cleaned);
+
         const parsed = JSON.parse(cleaned);
+
+        console.log('parsed res', parsed);
         return AgentDecisionSchema.parse(parsed);
     } catch (error) {
         console.error("❌ Planner failed:", error);

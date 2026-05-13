@@ -5,3 +5,5 @@
 3. PDF and Other file reading need to implement
 4. Search Functionality need to create for History, Archive and Bookmarks
 5. We Search need to fix correctly
+6. Speach Recongnition need to add in the input field
+7. Change Input field to TextArea

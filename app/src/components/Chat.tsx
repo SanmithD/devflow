@@ -15,6 +15,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
 
 // ── Action bar shown on hover beneath each bot message ──────────────────────
@@ -249,7 +251,10 @@ function Chat() {
                 <div className="opacity-0 group-hover:opacity-100 transition mt-1">
                   <button
                     title="Copy"
-                    onClick={() => {navigator.clipboard.writeText(msg.text); toast.success('Copied')}}
+                    onClick={() => {
+                      navigator.clipboard.writeText(msg.text);
+                      toast.success("Copied");
+                    }}
                     className="text-xs text-gray-400 hover:text-white"
                   >
                     <CopyIcon size={12} />
@@ -263,15 +268,58 @@ function Chat() {
               <div className="group flex flex-col max-w-[70%]">
                 <div className="px-4 py-2 rounded-2xl shadow bg-transparent text-white">
                   <div className="prose prose-sm text-sm/6 max-w-none md:tracking-wide prose-headings:mt-3 prose-headings:mb-2 prose-p:my-1 prose-table:text-sm">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ inline, className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || "");
+
+                          return !inline ? (
+                            <div className="relative my-3">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    String(children),
+                                  );
+                                  toast.success("Copied code");
+                                }}
+                                className="absolute top-2 right-2 text-xs bg-zinc-800 px-2 py-1 rounded text-white"
+                              >
+                                Copy
+                              </button>
+
+                              <SyntaxHighlighter
+                                language={match?.[1]}
+                                PreTag="div"
+                                style={oneDark}
+                              >
+                                {String(children).replace(/\n$/, "")}
+                              </SyntaxHighlighter>
+                            </div>
+                          ) : (
+                            <code className="bg-zinc-800 px-1 py-0.5 rounded text-pink-400">
+                              {children}
+                            </code>
+                          );
+                        },
+                        a({ href, children }: any) {
+                          return (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 underline hover:text-blue-300 transition"
+                            >
+                              {children}
+                            </a>
+                          );
+                        },
+                      }}
+                    >
                       {msg.text}
                     </ReactMarkdown>
                   </div>
-                  {
-                    loading && (
-                      <LoaderIcon className="animate-spin" size={14} />
-                    )
-                  }
+                  {loading && <LoaderIcon className="animate-spin" size={14} />}
                 </div>
 
                 {/* Only show actions once the message has content */}
