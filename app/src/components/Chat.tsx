@@ -5,7 +5,10 @@ import {
   ArrowUp,
   Copy,
   CopyIcon,
+  FilePlus2Icon,
   LoaderIcon,
+  Mic,
+  MicOff,
   RefreshCw,
   Share2,
   Square,
@@ -19,8 +22,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
 import { UseAuth } from "../hooks/UserDetail";
+import { VideoLinkPreview } from "./project-deatils/components/VideoPreview";
 
-// ── Action bar shown on hover beneath each bot message ──────────────────────
+// ── Action bar shown on hover beneath each bot message ───────────────────────
 function BotActions({
   text,
   onRegenerate,
@@ -95,34 +99,46 @@ function ActionButton({
   );
 }
 
-// ── Main Chat component ──────────────────────────────────────────────────────
+// ── Main Chat component ───────────────────────────────────────────────────────
 function Chat() {
   const router = useRouter();
   const params = useParams();
   const projectId = params?.id as string | undefined;
 
+  const [listening, setListening] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<{ type: string; text: string }[]>(
     [],
   );
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  let pendingProjectId: string | null = null;
 
-  const handleStop = async () => {
-    abortControllerRef.current?.abort();
-    setLoading(false);
-  };
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  let pendingProjectId: string | null = null;
 
   const { user } = UseAuth();
 
-  console.log('user', user);
-
+  // ── Auto-scroll ─────────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ── Auto-resize textarea (1 row default, max 4 rows) ────────────────────────
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    const lineHeight = 24; // px per row approx
+    const maxHeight = lineHeight * 4 + 16; // 4 rows + padding
+    ta.style.height = Math.min(ta.scrollHeight, maxHeight) + "px";
+    ta.style.overflowY = ta.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [message]);
+
+  // ── Load past messages ───────────────────────────────────────────────────────
   const fetchPastMessages = async () => {
     try {
       const res = await axios.get(`/api/projects/${Number(projectId)}/logs`);
@@ -144,21 +160,28 @@ function Chat() {
     fetchPastMessages();
   }, [projectId]);
 
+  // ── Stop streaming ───────────────────────────────────────────────────────────
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
+    setLoading(false);
+  };
+
+  // ── Send message ─────────────────────────────────────────────────────────────
   const sendMessage = async (userText: string) => {
     if (loading || !userText.trim()) {
       toast.error("Message is required");
       return;
     }
-    
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     setLoading(true);
+    // Append user msg + empty bot placeholder; mark the bot as "streaming"
     setMessages((prev) => [
       ...prev,
       { type: "user", text: userText },
-      { type: "bot", text: "" },
+      { type: "bot", text: "", streaming: true } as any,
     ]);
     setMessage("");
 
@@ -199,14 +222,13 @@ function Chat() {
               setMessages((prev) => {
                 const updated = [...prev];
                 const last = updated[updated.length - 1];
-
                 if (last?.type === "bot") {
                   updated[updated.length - 1] = {
                     ...last,
                     text: last.text + text,
-                  };
+                    streaming: true,
+                  } as any;
                 }
-
                 pendingProjectId = parsed.id;
                 return updated;
               });
@@ -215,45 +237,105 @@ function Chat() {
             }
           }
         }
+
         if (pendingProjectId) {
           router.push(`/dashboard/projects/${pendingProjectId}`);
         }
       }
     } catch (error) {
+      if ((error as Error).name === "AbortError") return;
       console.error(error);
-      if ((error as Error).name === "AbortError") {
-        return;
-      }
       toast.error("Failed to send message");
     } finally {
+      // Mark the last bot message as no longer streaming
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last?.type === "bot") {
+          updated[updated.length - 1] = { ...last, streaming: false } as any;
+        }
+        return updated;
+      });
       setLoading(false);
     }
   };
 
+  // ── Regenerate ───────────────────────────────────────────────────────────────
   const handleRegenerate = (index: number) => {
-    // Find the user message that preceded this bot message
     const userMsg = messages[index - 1];
     if (!userMsg || userMsg.type !== "user") return;
-
-    // Remove this bot message (and optionally re-send)
     setMessages((prev) => prev.slice(0, index));
     sendMessage(userMsg.text);
   };
 
+  // ── Mic toggle ───────────────────────────────────────────────────────────────
+  const toggleListening = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error("Speech Recognition not supported in this browser");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => setListening(true);
+    recognition.onend = () => setListening(false);
+
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setMessage(transcript);
+    };
+
+    recognition.onerror = () => {
+      toast.error("Microphone error");
+      setListening(false);
+    };
+
+    recognition.start();
+  };
+
+  // ── File upload trigger ──────────────────────────────────────────────────────
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      toast.success(`Selected: ${file.name}`);
+      // TODO: handle file upload logic here
+    }
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full w-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-3">
-        {messages.map((msg, index) =>
+      <div className="flex-1 w-full overflow-y-auto no-scrollbar px-4 py-3 space-y-3">
+        {messages.map((msg: any, index) =>
           msg.type === "user" ? (
             <div key={index} className="flex justify-end">
-              {/* group added */}
               <div className="group flex flex-col items-end max-w-[70%]">
-                <div className="px-4 py-2 rounded-2xl shadow bg-gray-800 text-white">
+                <div className="px-4 py-2 w-full rounded-2xl shadow bg-gray-800 text-white">
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
-
-                {/* Copy button (hidden until hover) */}
                 <div className="opacity-0 group-hover:opacity-100 transition mt-1">
                   <button
                     title="Copy"
@@ -269,17 +351,34 @@ function Chat() {
               </div>
             </div>
           ) : (
-            // Wrap bot message + action bar in a `group` so hover works together
             <div key={index} className="flex justify-start">
               <div className="group flex flex-col max-w-[70%]">
                 <div className="px-4 py-2 rounded-2xl shadow bg-transparent text-white">
-                  <div className="prose prose-sm text-sm/6 max-w-none md:tracking-wide prose-headings:mt-3 prose-headings:mb-2 prose-p:my-1 prose-table:text-sm">
+                  <div className="prose prose-sm max-w-none text-white
+  [&_p]:my-0 [&_p]:leading-6
+  [&_ul]:my-0 [&_ul]:pl-5
+  [&_ol]:my-0 [&_ol]:pl-5
+  [&_li]:my-0 [&_li]:leading-6
+  [&_h1]:mt-1 [&_h1]:mb-0
+  [&_h2]:mt-1 [&_h2]:mb-0
+  [&_h3]:mt-1 [&_h3]:mb-0
+  [&_h4]:mt-1 [&_h4]:mb-0
+  [&_pre]:my-0
+  [&_blockquote]:my-0 [&_blockquote]:py-0
+  [&_table]:my-0
+  [&_hr]:my-1
+  [&_img]:rounded-xl [&_img]:my-0
+  [&_a]:text-blue-400
+  [&_strong]:text-white
+  [&_code]:text-pink-400
+  [&>*:first-child]:mt-0
+  [&>*:last-child]:mb-0
+">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
                         code({ inline, className, children, ...props }: any) {
                           const match = /language-(\w+)/.exec(className || "");
-
                           return !inline ? (
                             <div className="relative my-3">
                               <button
@@ -289,11 +388,10 @@ function Chat() {
                                   );
                                   toast.success("Copied code");
                                 }}
-                                className="absolute top-2 right-2 text-xs bg-zinc-800 px-2 py-1 rounded text-white"
+                                className="absolute top-2 right-2 text-xs bg-zinc-800 px-2 py-1 rounded text-white z-10"
                               >
                                 Copy
                               </button>
-
                               <SyntaxHighlighter
                                 language={match?.[1]}
                                 PreTag="div"
@@ -310,14 +408,9 @@ function Chat() {
                         },
                         a({ href, children }: any) {
                           return (
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-400 underline hover:text-blue-300 transition"
-                            >
+                            <VideoLinkPreview href={href ?? ""}>
                               {children}
-                            </a>
+                            </VideoLinkPreview>
                           );
                         },
                       }}
@@ -325,11 +418,15 @@ function Chat() {
                       {msg.text}
                     </ReactMarkdown>
                   </div>
-                  {loading && <LoaderIcon className="animate-spin" size={14} />}
+
+                  {/* Loader only for the actively streaming message */}
+                  {msg.streaming && (
+                    <LoaderIcon className="animate-spin mt-1" size={14} />
+                  )}
                 </div>
 
-                {/* Only show actions once the message has content */}
-                {msg.text && (
+                {/* Actions only when message is complete */}
+                {msg.text && !msg.streaming && (
                   <BotActions
                     text={msg.text}
                     onRegenerate={() => handleRegenerate(index)}
@@ -344,8 +441,29 @@ function Chat() {
 
       {/* Input */}
       <div className="p-3">
-        <div className="flex items-center gap-2 max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto border rounded-3xl px-3 py-2 flex items-end gap-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
+          {/* Hidden file input */}
+          <input
+            hidden
+            ref={fileInputRef}
+            type="file"
+            name="media"
+            id="media"
+            onChange={handleFileChange}
+          />
+
+          {/* Upload button */}
+          <button
+            onClick={handleFileButtonClick}
+            className="p-2 rounded-full hover:bg-gray-500 transition-colors shrink-0"
+            title="Attach file"
+          >
+            <FilePlus2Icon size={20} />
+          </button>
+
+          {/* Textarea — single-line by default, grows up to 4 rows */}
           <textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
@@ -355,21 +473,40 @@ function Chat() {
               }
             }}
             placeholder="Type a message..."
-            className="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
+            rows={1}
+            style={{ resize: "none", overflowY: "hidden" }}
+            className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10"
           />
+
+          {/* Mic toggle button */}
+          <button
+            onClick={toggleListening}
+            title={listening ? "Stop listening" : "Start voice input"}
+            className={`p-2 rounded-full transition-colors shrink-0 ${
+              listening
+                ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
+                : "hover:bg-gray-500"
+            }`}
+          >
+            {listening ? <MicOff size={20} /> : <Mic size={20} />}
+          </button>
+
+          {/* Send / Stop */}
           {loading ? (
             <button
               onClick={handleStop}
-              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shrink-0"
+              title="Stop generating"
             >
-              <Square size={20} /> {/* lucide-react Square icon */}
+              <Square size={20} />
             </button>
           ) : (
             <button
               onClick={() => sendMessage(message)}
               disabled={!message.trim()}
-              className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50"
+              className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50 shrink-0 transition-colors"
+              title="Send message"
             >
               <ArrowUp size={20} />
             </button>
