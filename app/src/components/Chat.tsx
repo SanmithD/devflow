@@ -18,6 +18,7 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
+import { UseAuth } from "../hooks/UserDetail";
 
 // ── Action bar shown on hover beneath each bot message ──────────────────────
 function BotActions({
@@ -114,6 +115,10 @@ function Chat() {
     setLoading(false);
   };
 
+  const { user } = UseAuth();
+
+  console.log('user', user);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -144,6 +149,7 @@ function Chat() {
       toast.error("Message is required");
       return;
     }
+    
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -339,8 +345,7 @@ function Chat() {
       {/* Input */}
       <div className="p-3">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
-          <input
-            type="text"
+          <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
