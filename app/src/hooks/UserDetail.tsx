@@ -1,33 +1,23 @@
-"use client";
-
 import axios from "axios";
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { UserType } from "../types/profile.type";
 
-export const AuthContext = createContext<any>(null);
+export const useUserInfo = (): UserType | null => {
+  const [user, setUser] = useState(null);
 
-export const AuthProvider = ({ children }: any) => {
-    const [user, setUser] = useState(null);
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get("/api/auth/profile");
 
-    useEffect(() => { 
-        const fetchUser = async () => {
-            try {
-                const response = await axios.get('/api/auth/profile');
-                setUser(response.data);
-            } catch (error) {
-                console.log(error);
-            }
-        };
+        setUser(res.data.data);
+      } catch (err) {
+        console.log(err);
+      }
+    };
 
-        fetchUser();
-    }, []);
+    fetchUser();
+  }, []);
 
-    return (
-        <AuthContext.Provider value={{ user }}>
-            {children}
-        </AuthContext.Provider>
-    );
-};
-
-export const UseAuth = () => {
-    return useContext(AuthContext);
+  return user;
 };

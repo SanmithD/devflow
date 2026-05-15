@@ -225,4 +225,52 @@ export class AgentChatRepository {
             }
         }
     }
+
+    isUserAllowed = async ({ userId }: { userId: number }): Promise<{ message: string; success: boolean }> => {
+        try {
+
+            if (!userId) {
+                return {
+                    message: 'Invalid Id',
+                    success: false
+                }
+            }
+
+            const response = await prisma.user.findFirst({
+                where: { id: Number(userId) }
+            });
+
+            if (!response) {
+                return {
+                    message: 'User not found',
+                    success: false
+                }
+            }
+
+            if (!response.isUserAllowed) {
+                return {
+                    message: 'User not allowed',
+                    success: false
+                }
+            }
+
+            if (!response.isVerified) {
+                return {
+                    message: 'User Acount is not verified',
+                    success: false
+                }
+            }
+
+            return {
+                message: 'Authorzied user',
+                success: true
+            }
+        } catch (error) {
+            console.log('server error', error);
+            return {
+                message: 'Server error',
+                success: false
+            };
+        }
+    }
 }

@@ -3,16 +3,12 @@
 import axios from "axios";
 import {
   ArrowUp,
-  Copy,
   CopyIcon,
   FilePlus2Icon,
   LoaderIcon,
   Mic,
   MicOff,
-  RefreshCw,
-  Share2,
-  Square,
-  Volume2,
+  Square
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -20,85 +16,11 @@ import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import rehypeRaw from 'rehype-raw';
+import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
-import { UseAuth } from "../hooks/UserDetail";
+import { useUserInfo } from "../hooks/UserDetail";
+import BotActions from "./project-deatils/components/ChatAction";
 import { VideoLinkPreview } from "./project-deatils/components/VideoPreview";
-
-// ── Action bar shown on hover beneath each bot message ───────────────────────
-function BotActions({
-  text,
-  onRegenerate,
-}: {
-  text: string;
-  onRegenerate: () => void;
-}) {
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({ text }).catch(() => null);
-    } else {
-      await navigator.clipboard.writeText(text);
-      toast.success("Link copied (Web Share API not available)");
-    }
-  };
-
-  const handleSpeak = () => {
-    if (!window.speechSynthesis) return toast.error("Speech not supported");
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  return (
-    <div className="flex items-center gap-1 mt-1 pl-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-      <ActionButton
-        icon={<Copy size={12} />}
-        label="Copy"
-        onClick={handleCopy}
-      />
-      <ActionButton
-        icon={<Share2 size={12} />}
-        label="Share"
-        onClick={handleShare}
-      />
-      <ActionButton
-        icon={<Volume2 size={12} />}
-        label="Speak"
-        onClick={handleSpeak}
-      />
-      <ActionButton
-        icon={<RefreshCw size={12} />}
-        label="Regenerate"
-        onClick={onRegenerate}
-      />
-    </div>
-  );
-}
-
-function ActionButton({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={label}
-      className="flex items-center px-2 py-1 text-[11px] text-gray-400 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors whitespace-nowrap"
-    >
-      {icon}
-    </button>
-  );
-}
 
 // ── Main Chat component ───────────────────────────────────────────────────────
 function Chat() {
@@ -121,9 +43,9 @@ function Chat() {
 
   let pendingProjectId: string | null = null;
 
-  const { user } = UseAuth();
+  const user = useUserInfo();
 
-  console.log('user details', user);
+  console.log("user", user);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -198,6 +120,13 @@ function Chat() {
         }),
         signal: controller.signal,
       });
+
+      if (response.status === 400) {
+        const errorData = await response.json();
+
+        toast.error(errorData.message);
+        return ;
+      }
 
       if (!response.ok || !response.body) throw new Error("Stream failed");
 
@@ -436,6 +365,7 @@ function Chat() {
                 {msg.text && !msg.streaming && (
                   <BotActions
                     text={msg.text}
+                    textId={msg.id}
                     onRegenerate={() => handleRegenerate(index)}
                   />
                 )}
@@ -520,8 +450,15 @@ function Chat() {
           )}
         </div>
       </div>
-      <div className="w-full cursor-pointer flex justify-center" onClick={()=>router.push('/dashboard/terms')} >
-        <p className="text-gray-500 text-sm hover:text-emerald-500" >DevFlow Agent can make mistakes,Please double-check responses.</p>
+
+      {/* Terms And Condition */}
+      <div
+        className="w-full cursor-pointer flex justify-center"
+        onClick={() => router.push("/dashboard/terms")}
+      >
+        <p className="text-gray-500 text-sm hover:text-emerald-500">
+          DevFlow Agent can make mistakes,Please double-check responses.
+        </p>
       </div>
     </div>
   );

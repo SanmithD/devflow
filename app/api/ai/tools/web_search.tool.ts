@@ -3,15 +3,18 @@ import axios from "axios";
 
 export const webSearchTool = new DynamicTool({
     name: "web_search",
-    description: "Use this tool to search the web for current information, general knowledge, specific facts, recent news, or unknown information not in context.",
+    description: "Use this tool to search the web for current information, facts, recent news, or YouTube videos.",
     
     func: async (input: string): Promise<string> => {
         try {
             const response = await axios.get(
-                `${process.env.RAPID_BASE_URL}/ai-mode?prompt=${encodeURIComponent(input)}`,
+                `https://real-time-web-search.p.rapidapi.com/search`,  // ← use /search not /ai-mode
                 {
+                    params: {
+                        q: input,
+                        limit: 10
+                    },
                     headers: {
-                        "Content-Type": "application/json",
                         "x-rapidapi-host": "real-time-web-search.p.rapidapi.com",
                         "x-rapidapi-key": process.env.RAPID_API_KEY!,
                     },
@@ -19,19 +22,24 @@ export const webSearchTool = new DynamicTool({
                 }
             );
 
-            if (!response.data) {
+            if (!response.data?.data) {
                 return "No search results found.";
             }
 
-            return JSON.stringify(response.data, null, 2);
+            // Return only real, verifiable results with actual URLs
+            const results = response.data.data.map((item: any) => ({
+                title: item.title,
+                url: item.url,       // ← real crawled URLs
+                snippet: item.snippet
+            }));
+
+            return JSON.stringify(results, null, 2);
 
         } catch (error) {
             console.error("WebSearchTool error:", error);
-            
             if (axios.isAxiosError(error)) {
                 return `Search failed: ${error.message}`;
             }
-            
             return `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
         }
     }

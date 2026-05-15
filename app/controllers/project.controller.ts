@@ -29,6 +29,12 @@ export const agentChat = async (req: NextRequest) => {
 
         const chatRepo = new AgentChatRepository();
 
+        const isAuthorizedUser = await chatRepo.isUserAllowed({ userId: Number(userId) });
+
+        if(!isAuthorizedUser.success){
+            return NextResponse.json({ message: isAuthorizedUser.message },{ status: 400 })
+        }
+
         if (!projectId) {
             const newProject = await chatRepo.createNewProject({
                 userId: Number(userId),

@@ -1,17 +1,29 @@
+Features
+1. Ai Agent chat ✔️
+2. History ✔️
+3. Tool Calling ✔️
+4. Authentication ✔️
+5. Tokenization
+6. Subscription Plan
+7. File Uploads
+8. Voice Input ✔️
+9. Archive Chat ✔️
+10. Bookmarks Chat ✔️
+11. System Confguration ✔️
+12. Contact
+
 ## Issues
 
 1. Need to add redis in System Api
 2. Need to Complete RAG
 3. PDF and Other file reading need to implement
 4. Search Functionality need to create for History, Archive and Bookmarks
-5. We Search need to fix correctly
-6. Speach Recongnition need to add in the input field
-7. Change Input field to TextArea
-8. If response websearch link is youtube or video then show the thambnail
-
-
-
-
+5. We Search need to fix correctly (Done ✔️)
+6. Speach Recongnition need to add in the input field (Done ✔️)
+7. Change Input field to TextArea (Done ✔️)
+8. If response websearch link is youtube or video then show the thambnail (Done ✔️)
+9. Need to implement Notification Features
+10. Need to send platform logo while sharing the chat
 
 
 Using Cloudinary free tier is a very good choice for a resume/showcase AI SaaS.
@@ -31,14 +43,13 @@ Cloudinary
  
 Best Architecture for Fast Uploads
 DO NOT upload through your Next.js server
+
 Bad flow:
- 
 Browser → Next.js API → Cloudinary
 This is slower and wastes Vercel bandwidth.
  
 Best Practice → Direct Uploads
 Use:
- 
 Browser → Cloudinary directly
 Then save returned URL into Prisma/PostgreSQL.
  
