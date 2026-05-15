@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import rehypeRaw from 'rehype-raw';
 import remarkGfm from "remark-gfm";
 import { UseAuth } from "../hooks/UserDetail";
 import { VideoLinkPreview } from "./project-deatils/components/VideoPreview";
@@ -121,6 +122,8 @@ function Chat() {
   let pendingProjectId: string | null = null;
 
   const { user } = UseAuth();
+
+  console.log('user details', user);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -352,30 +355,34 @@ function Chat() {
             </div>
           ) : (
             <div key={index} className="flex justify-start">
-              <div className="group flex flex-col max-w-[70%]">
+              <div className="group flex flex-col max-w-[90%]">
                 <div className="px-4 py-2 rounded-2xl shadow bg-transparent text-white">
-                  <div className="prose prose-sm max-w-none text-white
-  [&_p]:my-0 [&_p]:leading-6
-  [&_ul]:my-0 [&_ul]:pl-5
-  [&_ol]:my-0 [&_ol]:pl-5
-  [&_li]:my-0 [&_li]:leading-6
-  [&_h1]:mt-1 [&_h1]:mb-0
-  [&_h2]:mt-1 [&_h2]:mb-0
-  [&_h3]:mt-1 [&_h3]:mb-0
-  [&_h4]:mt-1 [&_h4]:mb-0
-  [&_pre]:my-0
-  [&_blockquote]:my-0 [&_blockquote]:py-0
-  [&_table]:my-0
-  [&_hr]:my-1
-  [&_img]:rounded-xl [&_img]:my-0
-  [&_a]:text-blue-400
-  [&_strong]:text-white
-  [&_code]:text-pink-400
-  [&>*:first-child]:mt-0
-  [&>*:last-child]:mb-0
-">
+                  <div
+                    className="
+                      prose prose-sm max-w-none text-white
+                      [&_p]:my-2 [&_p]:mb-8 [&_p]:leading-6
+                      [&_ul]:my-8 [&_ul]:pl-10
+                      [&_ol]:my-1 [&_ol]:pl-5 [&_ol]:mb-10
+                      [&_li]:my-2 [&_li]:leading-6
+                      [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-base [&_h1]:font-semibold
+                      [&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold
+                      [&_h3]:mt-2 [&_h3]:mb-0 [&_h3]:text-sm [&_h3]:font-semibold
+                      [&_h4]:mt-1 [&_h4]:mb-0
+                      [&_pre]:my-3
+                      [&_blockquote]:my-0 [&_blockquote]:py-0
+                      [&_table]:my-0
+                      [&_hr]:my-7
+                      [&_img]:rounded-xl [&_img]:my-0
+                      [&_a]:text-blue-400
+                      [&_strong]:text-white
+                      [&_code]:text-pink-400
+                      [&>*:first-child]:mt-0
+                      [&>*:last-child]:mb-0
+                    "
+                  >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw]}
                       components={{
                         code({ inline, className, children, ...props }: any) {
                           const match = /language-(\w+)/.exec(className || "");
@@ -461,7 +468,7 @@ function Chat() {
             <FilePlus2Icon size={20} />
           </button>
 
-          {/* Textarea — single-line by default, grows up to 4 rows */}
+          {/* Textarea */}
           <textarea
             ref={textareaRef}
             value={message}
@@ -479,7 +486,7 @@ function Chat() {
             className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10"
           />
 
-          {/* Mic toggle button */}
+          {/* Mic toggle */}
           <button
             onClick={toggleListening}
             title={listening ? "Stop listening" : "Start voice input"}
@@ -512,6 +519,9 @@ function Chat() {
             </button>
           )}
         </div>
+      </div>
+      <div className="w-full cursor-pointer flex justify-center" onClick={()=>router.push('/dashboard/terms')} >
+        <p className="text-gray-500 text-sm hover:text-emerald-500" >DevFlow Agent can make mistakes,Please double-check responses.</p>
       </div>
     </div>
   );
