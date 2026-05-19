@@ -1,5 +1,6 @@
 import { addSession, getSession } from "../memory/session.memory";
 import "../tools";
+import { createAgentAuditLog } from "../utils/agent_audit.util";
 import { createTextStream } from "../utils/text_stream.util";
 import { runDirectResponse } from "./direct_response.agent";
 import { runPlanner } from "./planner.agent";
@@ -25,7 +26,13 @@ export const runAgent = async (
             abortSignal
         });
 
-        if(!resonerRes) throw new Error('Fail to reason')
+        if (!resonerRes) throw new Error('Fail to reason');
+
+        await createAgentAuditLog({
+            input: userInput,
+            model: 'Reasoner',
+            response: resonerRes?.enrichedInput
+        });
 
         let toolResults = "";
 
@@ -43,6 +50,12 @@ export const runAgent = async (
 
             if (!decision) throw new Error('Fail to create plan');
 
+            await createAgentAuditLog({
+                input: decision.input || '',
+                model: 'Planner',
+                response: decision.action
+            });
+
             // tool path
             if (decision.action === 'tool' && decision.tool) {
 
@@ -51,6 +64,12 @@ export const runAgent = async (
                     session_id,
                     tool: decision.tool,
                     abortSignal
+                });
+
+                await createAgentAuditLog({
+                    input: String(decision.input ?? resonerRes?.enrichedInput),
+                    model: 'Tool Executor',
+                    response: rawResult
                 });
 
                 // validator
@@ -66,6 +85,12 @@ export const runAgent = async (
                         content: synthesized
                     });
 
+                    await createAgentAuditLog({
+                        input: toolResults + rawResult,
+                        model: 'Synthesizer',
+                        response: synthesized
+                    });
+
                     return createTextStream(synthesized, abortSignal);
                 }
 
@@ -75,17 +100,25 @@ export const runAgent = async (
 
             // Direct answer path
             if (decision.action === 'final') {
-                return await runDirectResponse({
+                const res = await runDirectResponse({
                     session_id,
                     context: resonerRes?.context,
                     userInput: resonerRes?.enrichedInput,
                     abortSignal,
                 });
+
+                await createAgentAuditLog({
+                    input: resonerRes?.enrichedInput,
+                    model: 'Direct Response',
+                    response: String(res)
+                });
+
+                return res;
             }
         }
 
         return createTextStream("Agent stopped at max iterations");
-   } catch (error) {
+    } catch (error) {
         if ((error as Error).name === "AbortError") return createTextStream("");
         console.error("agent error", error);
         return null;

@@ -48,6 +48,7 @@ model User {
   auditTrials       AuditTrial[]
   archives          Archive[]
   bookmarks         Bookmark[]
+  agentAudits       AgentAudit[]
 
   @@index([id, email])
 }
@@ -76,17 +77,18 @@ model TokenUsage {
 }
 
 model Project {
-  id        Int        @id @default(autoincrement())
-  name      String
-  userId    Int
-  title     String?
-  ipAddress String?
-  status    Int        @default(1) // 1 -> active, 2 -> archived
-  createdAt DateTime   @default(now())
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ailogs    AILog[]
-  archives  Archive[]
-  bookmarks Bookmark[]
+  id          Int          @id @default(autoincrement())
+  name        String
+  userId      Int
+  title       String?
+  ipAddress   String?
+  status      Int          @default(1) // 1 -> active, 2 -> archived
+  createdAt   DateTime     @default(now())
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ailogs      AILog[]
+  archives    Archive[]
+  bookmarks   Bookmark[]
+  agentAudits AgentAudit[]
 
   @@index([id, userId, createdAt, title])
 }
@@ -120,15 +122,16 @@ model MailRecord {
 }
 
 model AILog {
-  id        Int      @unique @default(autoincrement())
-  userId    Int
-  projectId Int
-  input     String
-  response  String
-  ipAddress String?
-  createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          Int          @unique @default(autoincrement())
+  userId      Int
+  projectId   Int
+  input       String
+  response    String
+  ipAddress   String?
+  createdAt   DateTime     @default(now())
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentAudits AgentAudit[]
 
   @@index([projectId, userId, createdAt])
 }
@@ -164,6 +167,20 @@ model Bookmark {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AgentAudit {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  projectId Int
+  chatId    Int
+  model     String?
+  input     String?
+  response  String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id])
+  chat      AILog    @relation(fields: [chatId], references: [id])
 }
 
 // npx prisma migrate dev --name add_user_model
