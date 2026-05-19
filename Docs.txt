@@ -11,6 +11,7 @@ Features
 10. Bookmarks Chat ✔️
 11. System Confguration ✔️
 12. Contact
+13. Agent Audit
 
 ## Issues
 
@@ -24,6 +25,7 @@ Features
 8. If response websearch link is youtube or video then show the thambnail (Done ✔️)
 9. Need to implement Notification Features
 10. Need to send platform logo while sharing the chat
+11. Need to create agent audit schema
 
 
 Using Cloudinary free tier is a very good choice for a resume/showcase AI SaaS.

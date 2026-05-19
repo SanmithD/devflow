@@ -31,6 +31,12 @@ CRITICAL INSTRUCTIONS:
 - Do NOT try to call web_search, current_datetime, system_info or any other tool
 - Just return a JSON object describing which tool SHOULD be called (or if the answer is ready)
 
+WEB SEARCH TOOl INFO:
+- Use tavily_search for general questions and latest info
+- Use exa_search for deep technical or programming topics
+- Use github_issue_search for errors, bugs, or troubleshooting
+- Combine multiple tools if needed.
+
 OUTPUT FORMAT (choose ONE):
 
 If a tool is needed:

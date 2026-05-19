@@ -66,3 +66,39 @@ body {
 .prose table tr:hover {
   background-color: #070707;
 }
+
+/* width of scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* track (background) */
+::-webkit-scrollbar-track {
+  background: #111;
+}
+
+/* thumb (the draggable part) */
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 10px;
+}
+
+/* hover effect */
+::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #555 #111;
+}
+
+.custom-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* same styling but scoped */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}

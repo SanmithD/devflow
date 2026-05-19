@@ -1,14 +1,15 @@
-import { db } from "@/lib/db";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { prisma } from "../../lib/db";
 import SharePageClient from "./SharePageClient";
 
 const OG_IMAGE = "https://res.cloudinary.com/dosufm3su/image/upload/v1778859637/devflow-logo_klg4y9.png";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-    const shared = await db.sharedResponse.findUnique({ where: { id: params.id } });
+    const id = Number(params.id);
+    const shared = await prisma.aILog.findUnique({ where: { id } });
     if (!shared) return {};
-    const preview = shared.text.slice(0, 120);
+    const preview = shared.response.slice(0, 120);
     return {
         title: "DevFlow — Shared Response",
         description: preview,
@@ -22,7 +23,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 export default async function SharePage({ params }: { params: { id: string } }) {
-    const shared = await db.sharedResponse.findUnique({ where: { id: params.id } });
+    const id = Number(params.id);
+    const shared = await prisma.aILog.findUnique({ where: { id } });
     if (!shared) notFound();
-    return <SharePageClient text={shared.text} createdAt={shared.createdAt.toISOString()} />;
+    return <SharePageClient text={shared.response} createdAt={shared.createdAt.toISOString()} />;
 }

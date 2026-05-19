@@ -82,7 +82,7 @@ export class BookmarkRepository {
         }
     }
 
-    getAllBookmarked = async ({ userId, limit }: { userId: number; limit: number }) => {
+    getAllBookmarked = async ({ userId, limit = 40 }: { userId: number; limit: number }) => {
         try {
 
             if (!limit || !userId) {

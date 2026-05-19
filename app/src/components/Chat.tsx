@@ -260,7 +260,7 @@ function Chat() {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Messages */}
-      <div className="flex-1 w-full overflow-y-auto no-scrollbar px-4 py-3 space-y-3">
+      <div className="flex-1 w-full custom-scroll px-4 py-3 space-y-3">
         {messages.map((msg: any, index) =>
           msg.type === "user" ? (
             <div key={index} className="flex justify-end">
