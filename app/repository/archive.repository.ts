@@ -100,7 +100,7 @@ export class ArchiveRepository {
         }
     }
 
-    findArchive = async ({ userId, limit = 40 }: { userId: number; limit: number }) => {
+    findArchive = async ({ userId, limit = 20 }: { userId: number; limit: number }) => {
         try {
 
             if (!limit || !userId) {

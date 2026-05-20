@@ -23,7 +23,7 @@ function Archive({ isActive }: ArchiveProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchArchive = async ({ pageParam = 40 }) => {
+  const fetchArchive = async ({ pageParam = 20 }) => {
     const res = await axios.post("/api/projects/archive", {
       limit: pageParam,
     });
@@ -41,13 +41,13 @@ function Archive({ isActive }: ArchiveProps) {
   } = useInfiniteQuery({
     queryKey: ["archive"],
     queryFn: fetchArchive,
-    initialPageParam: 40,
+    initialPageParam: 20,
     enabled: isActive,
 
     getNextPageParam: (lastPage, pages) => {
       if (!lastPage.hasMore) return undefined;
 
-      return pages.length * 40 + 40;
+      return pages.length * 20 + 20;
     },
   });
 

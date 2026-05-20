@@ -2,7 +2,7 @@ import { prisma } from "../src/lib/db";
 
 export class HistoryRepository {
 
-    findHistory = async ({ userId, limit }: { userId: number; limit: number }) => {
+    findHistory = async ({ userId, limit = 20 }: { userId: number; limit: number }) => {
         try {
 
             if (!limit || !userId) {

@@ -309,7 +309,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   const [isDeleteLoading, setIsDeleteLoading] = useState<boolean>(false);
 
   const fetchHistory = async ({
-    pageParam = 40,
+    pageParam = 20,
   }: {
     pageParam: number;
   }): Promise<HistoryPage> => {
@@ -327,10 +327,10 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   } = useInfiniteQuery({
     queryKey: ["history"],
     queryFn: fetchHistory,
-    initialPageParam: 40,
+    initialPageParam: 20,
     getNextPageParam: (lastPage, pages) => {
       if (!lastPage.hasMore) return undefined;
-      return pages.length * 40 + 40;
+      return pages.length * 20 + 20;
     },
     enabled: isActive,
   });
@@ -367,7 +367,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
       toast.success("Deleted");
 
       setIsModelOpen(false);
-      await fetchHistory({ pageParam: 40 });
+      await fetchHistory({ pageParam: 20 });
     } catch (error) {
       console.error("archive error", error);
       toast.error("Failed to archive");

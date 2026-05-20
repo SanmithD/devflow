@@ -8,7 +8,7 @@ import {
   LoaderIcon,
   Mic,
   MicOff,
-  Square
+  Square,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +18,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import { isValidFile } from "../helper/validate_media_type";
 import { useUserInfo } from "../hooks/UserDetail";
 import BotActions from "./project-deatils/components/ChatAction";
 import { VideoLinkPreview } from "./project-deatils/components/VideoPreview";
@@ -28,6 +29,8 @@ function Chat() {
   const params = useParams();
   const projectId = params?.id as string | undefined;
 
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -91,6 +94,12 @@ function Chat() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   // ── Send message ─────────────────────────────────────────────────────────────
   const sendMessage = async (userText: string) => {
     if (loading || !userText.trim()) {
@@ -100,6 +109,25 @@ function Chat() {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    let finalMessage = userText;
+
+    if (previewFile) {
+      toast.loading("Uploading...");
+
+      const data = await uploadToCloudinary(previewFile);
+
+      toast.dismiss();
+
+      if (!data) return;
+
+      toast.success("File uploaded");
+
+      finalMessage += `\n${data.secure_url}`;
+    }
+
+    setPreviewFile(null);
+    setPreviewUrl(null);
 
     setLoading(true);
     // Append user msg + empty bot placeholder; mark the bot as "streaming"
@@ -125,7 +153,7 @@ function Chat() {
         const errorData = await response.json();
 
         toast.error(errorData.message);
-        return ;
+        return;
       }
 
       if (!response.ok || !response.body) throw new Error("Stream failed");
@@ -248,12 +276,40 @@ function Chat() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      toast.success(`Selected: ${file.name}`);
-      // TODO: handle file upload logic here
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    formData.append(
+      "upload_preset",
+      process.env.CLOUDINARY_PRESET_NAME as string,
+    );
+
+    try {
+      const res = await axios.post(
+        `${process.env.CLOUDINARY_URL}/v1_1/${process.env.CLOUDINARY_NAME}/auto/upload`,
+        formData,
+      );
+
+      return res.data;
+    } catch (error) {
+      console.log("media error", error);
+      toast.error("Fail to upload file");
+      return null;
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return null;
+
+    if (!isValidFile(file)) {
+      toast.error("Invalid file type (no audio/video allowed)");
+      return;
+    }
+
+    setPreviewFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -376,89 +432,103 @@ function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-3">
-        <div className="max-w-3xl mx-auto border rounded-3xl px-3 py-2 flex items-end gap-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
-          {/* Hidden file input */}
-          <input
-            hidden
-            ref={fileInputRef}
-            type="file"
-            name="media"
-            id="media"
-            onChange={handleFileChange}
-          />
+      <div className="mt-20 md:mt-8 place-content-end">
+        {/* Input */}
+        <div className="p-3">
+          <div className="max-w-3xl mx-auto border rounded-3xl px-3 py-2 flex items-end gap-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
+            {/* Hidden file input */}
+            <input
+              hidden
+              ref={fileInputRef}
+              type="file"
+              name="media"
+              id="media"
+              onChange={handleFileChange}
+            />
 
-          {/* Upload button */}
-          <button
-            onClick={handleFileButtonClick}
-            className="p-2 rounded-full hover:bg-gray-500 transition-colors shrink-0"
-            title="Attach file"
-          >
-            <FilePlus2Icon size={20} />
-          </button>
-
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage(message);
-              }
-            }}
-            placeholder="Type a message..."
-            disabled={loading}
-            rows={1}
-            style={{ resize: "none", overflowY: "hidden" }}
-            className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10"
-          />
-
-          {/* Mic toggle */}
-          <button
-            onClick={toggleListening}
-            title={listening ? "Stop listening" : "Start voice input"}
-            className={`p-2 rounded-full transition-colors shrink-0 ${
-              listening
-                ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
-                : "hover:bg-gray-500"
-            }`}
-          >
-            {listening ? <MicOff size={20} /> : <Mic size={20} />}
-          </button>
-
-          {/* Send / Stop */}
-          {loading ? (
+            {/* Upload button */}
             <button
-              onClick={handleStop}
-              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shrink-0"
-              title="Stop generating"
+              onClick={handleFileButtonClick}
+              className="p-2 rounded-full hover:bg-gray-500 transition-colors shrink-0"
+              title="Attach file"
             >
-              <Square size={20} />
+              <FilePlus2Icon size={20} />
             </button>
-          ) : (
+
+            {previewUrl && (
+              <div className="w-full mb-2">
+                {previewFile?.type.startsWith("image/") ? (
+                  <img src={previewUrl} className="max-h-40 rounded-lg" />
+                ) : (
+                  <div className="text-sm bg-gray-800 px-3 py-2 rounded">
+                    📎 {previewFile?.name}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(message);
+                }
+              }}
+              placeholder="Type a message..."
+              disabled={loading}
+              rows={1}
+              style={{ resize: "none", overflowY: "hidden" }}
+              className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10"
+            />
+
+            {/* Mic toggle */}
             <button
-              onClick={() => sendMessage(message)}
-              disabled={!message.trim()}
-              className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50 shrink-0 transition-colors"
-              title="Send message"
+              onClick={toggleListening}
+              title={listening ? "Stop listening" : "Start voice input"}
+              className={`p-2 rounded-full transition-colors shrink-0 ${
+                listening
+                  ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
+                  : "hover:bg-gray-500"
+              }`}
             >
-              <ArrowUp size={20} />
+              {listening ? <MicOff size={20} /> : <Mic size={20} />}
             </button>
-          )}
+
+            {/* Send / Stop */}
+            {loading ? (
+              <button
+                onClick={handleStop}
+                className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shrink-0"
+                title="Stop generating"
+              >
+                <Square size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={() => sendMessage(message)}
+                disabled={!message.trim()}
+                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50 shrink-0 transition-colors"
+                title="Send message"
+              >
+                <ArrowUp size={20} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Terms And Condition */}
-      <div
-        className="w-full cursor-pointer flex justify-center"
-        onClick={() => router.push("/dashboard/terms")}
-      >
-        <p className="text-gray-500 text-sm hover:text-emerald-500">
-          DevFlow Agent can make mistakes,Please double-check responses.
-        </p>
+        {/* Terms And Condition */}
+        <div
+          className="w-full place-content-end cursor-pointer mb-0 flex justify-center"
+          onClick={() => router.push("/dashboard/terms")}
+        >
+          <p className="text-gray-500 text-sm hover:text-emerald-500">
+            DevFlow Agent can make mistakes,Please double-check responses.
+          </p>
+        </div>
       </div>
     </div>
   );
