@@ -13,8 +13,10 @@ export const agentChat = async (req: NextRequest) => {
 
         const abortSignal = req.signal;
         const userId = session.user.id;
+
         const body = await req.json();
-        const { message, projectId } = body;
+
+        const { message, projectId, media_metadata } = body;
 
         if (!message || typeof message !== "string") {
             return NextResponse.json({ message: "Invalid Message" }, { status: 400 });
@@ -54,6 +56,25 @@ export const agentChat = async (req: NextRequest) => {
         });
 
         const stream = data.data;
+
+        if(media_metadata){
+
+            console.log('meta data 2', JSON.stringify(media_metadata))
+            const { format, size, url, name, type } = media_metadata;
+            const res = await chatRepo.uploadMediaFilesInDB({
+                userId: Number(userId),
+                chatId: currentProjectId,
+                format,
+                size: String(size),
+                url,
+                name,
+                type
+            });
+
+            if(!res.success){
+                return NextResponse.json({ message: res.message },{ status: 400 })
+            }
+        }
 
         return new Response(stream, {
             headers: {

@@ -273,4 +273,60 @@ export class AgentChatRepository {
             };
         }
     }
+
+    uploadMediaFilesInDB = async (
+        {
+            userId,
+            chatId,
+            format,
+            name,
+            url,
+            type,
+            size
+        }: {
+            userId: number;
+            chatId: number;
+            format: string;
+            name: string;
+            url: string;
+            type: string;
+            size: string;
+        }
+    ): Promise<{ data: any | null; success: boolean; message: string }> => {
+        try {
+
+            const response = await prisma.chatMedia.create({
+                data: {
+                    userId,
+                    chatId,
+                    format,
+                    name,
+                    url,
+                    type,
+                    size
+                }
+            });
+
+            if (!response) {
+                return {
+                    data: null,
+                    success: false,
+                    message: 'fail to save metadata'
+                }
+            }
+
+            return {
+                data: response,
+                success: true,
+                message: 'Meta data saved'
+            }
+        } catch (error) {
+            console.log('server error', error);
+            return {
+                data: null,
+                success: false,
+                message: 'server error'
+            }
+        }
+    }
 }

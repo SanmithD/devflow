@@ -22,7 +22,7 @@
       "@/*": ["./*"],
       "@/hooks/*": ["./src/hooks/*"]
     },
-    "noImplicitAny": false,
+    // "noImplicitAny": false,
   },
   "include": [
     "next-env.d.ts",

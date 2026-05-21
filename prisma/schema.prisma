@@ -49,6 +49,7 @@ model User {
   archives          Archive[]
   bookmarks         Bookmark[]
   agentAudits       AgentAudit[]
+  chatMedias        ChatMedia[]
 
   @@index([id, email])
 }
@@ -132,6 +133,7 @@ model AILog {
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   agentAudits AgentAudit[]
+  chatMedias  ChatMedia[]
 
   @@index([projectId, userId, createdAt])
 }
@@ -181,6 +183,20 @@ model AgentAudit {
   user      User     @relation(fields: [userId], references: [id])
   project   Project  @relation(fields: [projectId], references: [id])
   chat      AILog    @relation(fields: [chatId], references: [id])
+}
+
+model ChatMedia {
+  id        Int      @id @default(autoincrement())
+  url       String?
+  type      String?
+  name      String?
+  format    String?
+  size      String?
+  chatId    Int
+  userId    Int
+  createdAt DateTime @default(now())
+  chat      AILog    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // npx prisma migrate dev --name add_user_model

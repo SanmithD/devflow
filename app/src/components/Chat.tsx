@@ -4,11 +4,13 @@ import axios from "axios";
 import {
   ArrowUp,
   CopyIcon,
+  FileIcon,
   FilePlus2Icon,
   LoaderIcon,
   Mic,
   MicOff,
   Square,
+  X
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +25,62 @@ import { useUserInfo } from "../hooks/UserDetail";
 import BotActions from "./project-deatils/components/ChatAction";
 import { VideoLinkPreview } from "./project-deatils/components/VideoPreview";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface MediaMetadata {
+  format: string;
+  size: number;
+  url: string;
+  name: string;
+  type: string;
+}
+
+// ── File Preview Component ─────────────────────────────────────────────────────
+function FilePreview({
+  file,
+  previewUrl,
+  onRemove,
+}: {
+  file: File;
+  previewUrl: string;
+  onRemove: () => void;
+}) {
+  const isImage = file.type.startsWith("image/");
+
+  return (
+    <div className="relative inline-flex items-center group mb-2">
+      {isImage ? (
+        <div className="relative">
+          <img
+            src={previewUrl}
+            alt={file.name}
+            className="h-24 w-24 object-cover rounded-xl border border-white/10 shadow-lg"
+          />
+          <div className="absolute inset-0 rounded-xl bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 bg-zinc-800/80 border border-white/10 rounded-xl px-3 py-2.5 min-w-[160px] max-w-[240px]">
+          <div className="shrink-0 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <FileIcon size={16} className="text-blue-400" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs text-white font-medium truncate">{file.name}</span>
+            <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</span>
+          </div>
+        </div>
+      )}
+
+      {/* Remove button */}
+      <button
+        onClick={onRemove}
+        className="absolute -top-2 -right-2 w-5 h-5 bg-zinc-700 hover:bg-red-500 border border-white/10 rounded-full flex items-center justify-center transition-colors shadow z-10"
+        title="Remove file"
+      >
+        <X size={10} className="text-white" />
+      </button>
+    </div>
+  );
+}
+
 // ── Main Chat component ───────────────────────────────────────────────────────
 function Chat() {
   const router = useRouter();
@@ -34,34 +92,32 @@ function Chat() {
   const [listening, setListening] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<{ type: string; text: string }[]>(
-    [],
-  );
+  const [messages, setMessages] = useState<{ type: string; text: string }[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const inputWrapperRef = useRef<HTMLDivElement | null>(null);
 
   let pendingProjectId: string | null = null;
 
   const user = useUserInfo();
 
-  console.log("user", user);
-
-  // ── Auto-scroll ─────────────────────────────────────────────────────────────
+  // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ── Auto-resize textarea (1 row default, max 4 rows) ────────────────────────
+  // ── Auto-resize textarea ─────────────────────────────────────────────────────
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    const lineHeight = 24; // px per row approx
-    const maxHeight = lineHeight * 4 + 16; // 4 rows + padding
+    const lineHeight = 24;
+    const maxHeight = lineHeight * 5 + 16;
     ta.style.height = Math.min(ta.scrollHeight, maxHeight) + "px";
     ta.style.overflowY = ta.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [message]);
@@ -88,17 +144,50 @@ function Chat() {
     fetchPastMessages();
   }, [projectId]);
 
+  // ── Cleanup preview URL ──────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   // ── Stop streaming ───────────────────────────────────────────────────────────
   const handleStop = () => {
     abortControllerRef.current?.abort();
     setLoading(false);
   };
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+  // ── Remove attached file ─────────────────────────────────────────────────────
+  const removeFile = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // ── Upload to Cloudinary ─────────────────────────────────────────────────────
+  const uploadToCloudinary = async (file: File): Promise<{ secure_url: string; format: string; bytes: number; resource_type: string } | null> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_NAME! as string);
+
+    try {
+
+      if(!process.env.NEXT_PUBLIC_CLOUDINARY_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_NAME === ""){
+        console.log('env key not found', process.env.CLOUDINARY_NAME, 'and', `${process.env.CLOUDINARY_URL}/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_NAME}/auto/upload`);
+        return null;
+      }
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_CLOUDINARY_URL}/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_NAME}/auto/upload`,
+        formData,
+      );
+      return res.data;
+    } catch (error) {
+      console.log("media error", error);
+      toast.error("Failed to upload file");
+      return null;
+    }
+  };
 
   // ── Send message ─────────────────────────────────────────────────────────────
   const sendMessage = async (userText: string) => {
@@ -110,33 +199,39 @@ function Chat() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    let finalMessage = userText;
+    let media_metadata: MediaMetadata | null = null;
 
     if (previewFile) {
-      toast.loading("Uploading...");
-
+      const toastId = toast.loading("Uploading file...");
       const data = await uploadToCloudinary(previewFile);
-
-      toast.dismiss();
+      toast.dismiss(toastId);
 
       if (!data) return;
 
       toast.success("File uploaded");
 
-      finalMessage += `\n${data.secure_url}`;
+      media_metadata = {
+        url: data.secure_url,
+        format: data.format,
+        size: previewFile.size,
+        name: previewFile.name,
+        type: previewFile.type,
+      };
     }
 
     setPreviewFile(null);
     setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     setLoading(true);
-    // Append user msg + empty bot placeholder; mark the bot as "streaming"
     setMessages((prev) => [
       ...prev,
       { type: "user", text: userText },
       { type: "bot", text: "", streaming: true } as any,
     ]);
     setMessage("");
+
+    console.log('meta data', JSON.stringify(media_metadata))
 
     try {
       const response = await fetch("/api/projects/", {
@@ -145,13 +240,13 @@ function Chat() {
         body: JSON.stringify({
           message: userText,
           projectId: projectId ? Number(projectId) : null,
+          ...(media_metadata && { media_metadata }),
         }),
         signal: controller.signal,
       });
 
       if (response.status === 400) {
         const errorData = await response.json();
-
         toast.error(errorData.message);
         return;
       }
@@ -166,9 +261,7 @@ function Chat() {
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk
-          .split("\n")
-          .filter((l) => l.trim().startsWith("data:"));
+        const lines = chunk.split("\n").filter((l) => l.trim().startsWith("data:"));
 
         for (const line of lines) {
           const data = line.replace(/^data:\s*/, "").trim();
@@ -207,7 +300,6 @@ function Chat() {
       console.error(error);
       toast.error("Failed to send message");
     } finally {
-      // Mark the last bot message as no longer streaming
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
@@ -237,8 +329,7 @@ function Chat() {
     }
 
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       toast.error("Speech Recognition not supported in this browser");
@@ -271,51 +362,50 @@ function Chat() {
     recognition.start();
   };
 
-  // ── File upload trigger ──────────────────────────────────────────────────────
-  const handleFileButtonClick = () => {
-    fileInputRef.current?.click();
+  // ── Drag & Drop ──────────────────────────────────────────────────────────────
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
   };
 
-  const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    formData.append(
-      "upload_preset",
-      process.env.CLOUDINARY_PRESET_NAME as string,
-    );
-
-    try {
-      const res = await axios.post(
-        `${process.env.CLOUDINARY_URL}/v1_1/${process.env.CLOUDINARY_NAME}/auto/upload`,
-        formData,
-      );
-
-      return res.data;
-    } catch (error) {
-      console.log("media error", error);
-      toast.error("Fail to upload file");
-      return null;
-    }
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return null;
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    processFile(file);
+  };
 
+  // ── File helpers ─────────────────────────────────────────────────────────────
+  const processFile = (file: File) => {
     if (!isValidFile(file)) {
       toast.error("Invalid file type (no audio/video allowed)");
       return;
     }
-
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  };
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Messages */}
+      {/* ── Messages ── */}
       <div className="flex-1 w-full custom-scroll px-4 py-3 space-y-3">
         {messages.map((msg: any, index) =>
           msg.type === "user" ? (
@@ -375,9 +465,7 @@ function Chat() {
                             <div className="relative my-3">
                               <button
                                 onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    String(children),
-                                  );
+                                  navigator.clipboard.writeText(String(children));
                                   toast.success("Copied code");
                                 }}
                                 className="absolute top-2 right-2 text-xs bg-zinc-800 px-2 py-1 rounded text-white z-10"
@@ -411,13 +499,11 @@ function Chat() {
                     </ReactMarkdown>
                   </div>
 
-                  {/* Loader only for the actively streaming message */}
                   {msg.streaming && (
                     <LoaderIcon className="animate-spin mt-1" size={14} />
                   )}
                 </div>
 
-                {/* Actions only when message is complete */}
                 {msg.text && !msg.streaming && (
                   <BotActions
                     text={msg.text}
@@ -432,101 +518,172 @@ function Chat() {
         <div ref={bottomRef} />
       </div>
 
+      {/* ── Input Area ── */}
       <div className="mt-20 md:mt-8 place-content-end">
-        {/* Input */}
         <div className="p-3">
-          <div className="max-w-3xl mx-auto border rounded-3xl px-3 py-2 flex items-end gap-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
-            {/* Hidden file input */}
-            <input
-              hidden
-              ref={fileInputRef}
-              type="file"
-              name="media"
-              id="media"
-              onChange={handleFileChange}
-            />
-
-            {/* Upload button */}
-            <button
-              onClick={handleFileButtonClick}
-              className="p-2 rounded-full hover:bg-gray-500 transition-colors shrink-0"
-              title="Attach file"
+          <div className="max-w-3xl mx-auto">
+            {/* 
+              Outer wrapper — handles drag-and-drop highlight.
+              Split into two visual layers so the border/ring sits on
+              the outer div while content lives inside.
+            */}
+            <div
+              ref={inputWrapperRef}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`
+                relative rounded-3xl border transition-all duration-200
+                ${isDragging
+                  ? "border-blue-500 ring-2 ring-blue-500/40 bg-blue-500/5"
+                  : "border-white/10 bg-zinc-900/60 focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20"
+                }
+                shadow-lg backdrop-blur-sm
+              `}
             >
-              <FilePlus2Icon size={20} />
-            </button>
+              {/* Drag overlay label */}
+              {isDragging && (
+                <div className="absolute inset-0 rounded-3xl flex items-center justify-center z-20 pointer-events-none">
+                  <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
+                    <FilePlus2Icon size={18} />
+                    <span>Drop file here</span>
+                  </div>
+                </div>
+              )}
 
-            {previewUrl && (
-              <div className="w-full mb-2">
-                {previewFile?.type.startsWith("image/") ? (
-                  <img src={previewUrl} className="max-h-40 rounded-lg" />
-                ) : (
-                  <div className="text-sm bg-gray-800 px-3 py-2 rounded">
-                    📎 {previewFile?.name}
+              <div className={`flex flex-col gap-0 ${isDragging ? "opacity-30 pointer-events-none" : ""}`}>
+
+                {/* ── File preview strip (shown above text when file is attached) ── */}
+                {previewFile && previewUrl && (
+                  <div className="px-4 pt-3 pb-1">
+                    <FilePreview
+                      file={previewFile}
+                      previewUrl={previewUrl}
+                      onRemove={removeFile}
+                    />
+                  </div>
+                )}
+
+                {/* ── Text input row ── */}
+                <div className="flex items-end gap-2 px-3 py-2">
+                  {/* Hidden file input */}
+                  <input
+                    hidden
+                    ref={fileInputRef}
+                    type="file"
+                    name="media"
+                    id="media"
+                    onChange={handleFileChange}
+                  />
+
+                  {/* Attach button */}
+                  <button
+                    onClick={handleFileButtonClick}
+                    title="Attach file"
+                    className={`
+                      p-2 rounded-xl transition-all duration-150 shrink-0 self-end mb-0.5
+                      ${previewFile
+                        ? "text-blue-400 bg-blue-500/15 hover:bg-blue-500/25"
+                        : "text-gray-400 hover:text-white hover:bg-white/10"
+                      }
+                    `}
+                  >
+                    <FilePlus2Icon size={18} />
+                  </button>
+
+                  {/* Textarea */}
+                  <textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage(message);
+                      }
+                    }}
+                    placeholder={
+                      previewFile
+                        ? `Add a message about ${previewFile.name}…`
+                        : "Type a message…"
+                    }
+                    disabled={loading}
+                    rows={1}
+                    style={{ resize: "none", overflowY: "hidden" }}
+                    className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10 text-white placeholder:text-gray-500 text-sm"
+                  />
+
+                  {/* Right-side controls */}
+                  <div className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+                    {/* Mic */}
+                    <button
+                      onClick={toggleListening}
+                      title={listening ? "Stop listening" : "Start voice input"}
+                      className={`
+                        p-2 rounded-xl transition-all duration-150
+                        ${listening
+                          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
+                          : "text-gray-400 hover:text-white hover:bg-white/10"
+                        }
+                      `}
+                    >
+                      {listening ? <MicOff size={18} /> : <Mic size={18} />}
+                    </button>
+
+                    {/* Send / Stop */}
+                    {loading ? (
+                      <button
+                        onClick={handleStop}
+                        title="Stop generating"
+                        className="p-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all duration-150"
+                      >
+                        <Square size={18} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => sendMessage(message)}
+                        disabled={!message.trim() && !previewFile}
+                        title="Send message"
+                        className="p-2 rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 shadow-sm"
+                      >
+                        <ArrowUp size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Bottom hint bar (file attached state) ── */}
+                {previewFile && (
+                  <div className="px-4 pb-2.5 flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    <span className="text-xs text-gray-500">
+                      {previewFile.type.startsWith("image/") ? "Image" : "File"} attached · {(previewFile.size / 1024).toFixed(1)} KB ·{" "}
+                      <button
+                        onClick={removeFile}
+                        className="text-red-400/80 hover:text-red-400 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </span>
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* Textarea */}
-            <textarea
-              ref={textareaRef}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage(message);
-                }
-              }}
-              placeholder="Type a message..."
-              disabled={loading}
-              rows={1}
-              style={{ resize: "none", overflowY: "hidden" }}
-              className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10"
-            />
-
-            {/* Mic toggle */}
-            <button
-              onClick={toggleListening}
-              title={listening ? "Stop listening" : "Start voice input"}
-              className={`p-2 rounded-full transition-colors shrink-0 ${
-                listening
-                  ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
-                  : "hover:bg-gray-500"
-              }`}
-            >
-              {listening ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
-
-            {/* Send / Stop */}
-            {loading ? (
-              <button
-                onClick={handleStop}
-                className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shrink-0"
-                title="Stop generating"
-              >
-                <Square size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={() => sendMessage(message)}
-                disabled={!message.trim()}
-                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50 shrink-0 transition-colors"
-                title="Send message"
-              >
-                <ArrowUp size={20} />
-              </button>
-            )}
+            {/* Drag hint */}
+            <p className="text-center text-xs text-gray-600 mt-1.5">
+              You can also drag & drop files into the input
+            </p>
           </div>
         </div>
 
-        {/* Terms And Condition */}
+        {/* Terms */}
         <div
           className="w-full place-content-end cursor-pointer mb-0 flex justify-center"
           onClick={() => router.push("/dashboard/terms")}
         >
-          <p className="text-gray-500 text-sm hover:text-emerald-500">
-            DevFlow Agent can make mistakes,Please double-check responses.
+          <p className="text-gray-500 text-sm hover:text-emerald-500 transition-colors">
+            DevFlow Agent can make mistakes. Please double-check responses.
           </p>
         </div>
       </div>
