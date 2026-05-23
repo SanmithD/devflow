@@ -669,11 +669,6 @@ function Chat() {
                 )}
               </div>
             </div>
-
-            {/* Drag hint */}
-            <p className="text-center text-xs text-gray-600 mt-1.5">
-              You can also drag & drop files into the input
-            </p>
           </div>
         </div>
 
@@ -682,7 +677,7 @@ function Chat() {
           className="w-full place-content-end cursor-pointer mb-0 flex justify-center"
           onClick={() => router.push("/dashboard/terms")}
         >
-          <p className="text-gray-500 text-sm hover:text-emerald-500 transition-colors">
+          <p className="text-gray-500 text-xs hover:text-emerald-500 transition-colors">
             DevFlow Agent can make mistakes. Please double-check responses.
           </p>
         </div>

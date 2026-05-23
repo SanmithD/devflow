@@ -1,11 +1,17 @@
 import { createEmbedder } from "./embedding";
 import { vectorStore } from "./vector_store";
 
-export const retrive = async(query: string) => {
+export const retrive = async (
+    query: string,
+    session_id: string
+) => {
+    const queryEmbedding = (await createEmbedder(query)) as number[];
 
-    const queryEmbedding = await createEmbedder(query) as number[];
-    
-    const result = vectorStore.search(queryEmbedding, 3);
+    const results = vectorStore.search(queryEmbedding, {
+        topK: 5,
+        projectId: Number(session_id),
+        minScore: 0.6
+    });
 
-    return result.map(r => r.text).join("\n");
-}
+    return results.filter(r => r.score > 0.7); // return full objects more then 0.7 confidence
+};

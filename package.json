@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
+    "@langchain/community": "^1.1.28",
     "@langchain/core": "^1.1.44",
     "@langchain/langgraph": "^1.2.9",
     "@langchain/openai": "^1.4.5",
@@ -24,6 +25,7 @@
     "axios": "^1.15.0",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.2.0",
+    "crypto": "^1.0.1",
     "csv-writer": "^1.6.0",
     "dotenv": "^17.4.2",
     "fs": "^0.0.1-security",

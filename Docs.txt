@@ -11,7 +11,7 @@ Features
 10. Bookmarks Chat ✔️
 11. System Confguration ✔️
 12. Contact
-13. Agent Audit
+13. Agent Audit ✔️
 
 ## Issues
 
@@ -27,6 +27,16 @@ Features
 10. Need to send platform logo while sharing the chat
 11. Need to create agent audit schema
 
+if (media_metadata) {
+   // 1. download file
+   // 2. detect type
+   // 3. parse content
+   // 4. chunk (1000 chars + overlap)
+   // 5. embed (OpenAI / other)
+   // 6. store in vector DB (pinecone / weaviate / pgvector)
+}
+
+runReasoner → retrieve relevant chunks → inject into context
 
 Using Cloudinary free tier is a very good choice for a resume/showcase AI SaaS.
  

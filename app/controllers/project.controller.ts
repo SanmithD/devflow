@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { parseMediaFiles } from "../api/ai/rag/ingestion/parse_media_files";
 import { AgentChatRepository } from "../repository/project.repository";
 import { authOptions } from "../src/lib/auth";
 
@@ -33,8 +34,8 @@ export const agentChat = async (req: NextRequest) => {
 
         const isAuthorizedUser = await chatRepo.isUserAllowed({ userId: Number(userId) });
 
-        if(!isAuthorizedUser.success){
-            return NextResponse.json({ message: isAuthorizedUser.message },{ status: 400 })
+        if (!isAuthorizedUser.success) {
+            return NextResponse.json({ message: isAuthorizedUser.message }, { status: 400 })
         }
 
         if (!projectId) {
@@ -47,20 +48,12 @@ export const agentChat = async (req: NextRequest) => {
             currentProjectId = newProject.data?.id;
         }
 
-        const data = await chatRepo.getStreamResponse({
-            userId: Number(userId),
-            ip,
-            message,
-            abortSignal,
-            currentProjectId
-        });
-
-        const stream = data.data;
-
-        if(media_metadata){
+        if (media_metadata) {
 
             console.log('meta data 2', JSON.stringify(media_metadata))
+
             const { format, size, url, name, type } = media_metadata;
+
             const res = await chatRepo.uploadMediaFilesInDB({
                 userId: Number(userId),
                 chatId: currentProjectId,
@@ -71,10 +64,22 @@ export const agentChat = async (req: NextRequest) => {
                 type
             });
 
-            if(!res.success){
-                return NextResponse.json({ message: res.message },{ status: 400 })
+            if (!res.success) {
+                return NextResponse.json({ message: res.message }, { status: 400 })
             }
+
+            await parseMediaFiles(url, format, currentProjectId);
         }
+
+        const data = await chatRepo.getStreamResponse({
+            userId: Number(userId),
+            ip,
+            message,
+            abortSignal,
+            currentProjectId
+        });
+
+        const stream = data.data;
 
         return new Response(stream, {
             headers: {

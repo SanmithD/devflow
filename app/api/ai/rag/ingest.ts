@@ -1,9 +1,13 @@
+import { randomUUID } from "crypto";
+import { chunkText } from "./chunk";
 import { createEmbedder } from "./embedding";
 import { vectorStore } from "./vector_store";
 
-export const ingest = async(text: string) => {
+export const ingest = async(text: string, projectId: number) => {
 
-    const chunks = text.match(/.{1,500}/g) || [];
+    if (!text) throw new Error("Empty text");
+
+    const chunks = chunkText(text, 500, 100);
 
     for(let i=0; i < chunks.length; i++){
         const chunk = chunks[i];
@@ -11,9 +15,10 @@ export const ingest = async(text: string) => {
         const embedding = await createEmbedder(chunk) as number[];
 
         vectorStore.add({
-            id: `chunk-${i}`,
+            id: randomUUID(), // no collisions
             embedding,
-            text: chunk
+            text: chunk,
+            projectId: Number(projectId)
         })
     }
 }

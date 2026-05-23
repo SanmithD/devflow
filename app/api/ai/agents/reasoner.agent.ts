@@ -14,7 +14,12 @@ export const runReasoner = async ({
     try {
 
         // fetch context
-        const context = await retrive(userInput);
+        const chunks = await retrive(userInput, session_id);
+
+        const context = chunks
+            .slice(0, 3)
+            .map(c => c.text)
+            .join("\n");
 
         const history = getSession(session_id);
 
