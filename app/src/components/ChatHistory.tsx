@@ -404,7 +404,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
           <>
             {history.map((item) => (
               <div
-                key={item.id}
+                key={item?.id}
                 className="
                   group relative flex items-center gap-2.5 px-3 py-2.5
                   rounded-lg cursor-pointer select-none
@@ -416,25 +416,25 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
 
                 <div className="flex-1 min-w-0">
                   {/* NEW: show inline rename input when this item is being renamed */}
-                  {renamingId === item.id ? (
+                  {renamingId === item?.id ? (
                     <RenameInput
-                      itemId={item.id}
-                      currentTitle={item.title || item.name || ""}
+                      itemId={item?.id}
+                      currentTitle={item?.title || item?.name || ""}
                       onDone={() => setRenamingId(null)}
                     />
                   ) : (
                     <>
                       <p
                         onClick={() =>
-                          router.push(`/dashboard/projects/${item.id}`)
+                          router.push(`/dashboard/projects/${item?.id}`)
                         }
                         className="text-sm text-gray-300 truncate leading-snug group-hover:text-gray-100 transition-colors"
                       >
-                        {item.title || item.name || "Untitled"}
+                        {item?.title || item?.name || "Untitled"}
                       </p>
-                      {item.updatedAt && (
+                      {item?.updatedAt && (
                         <p className="text-[11px] text-gray-600 mt-0.5 leading-none">
-                          {timeAgo(item.updatedAt)}
+                          {timeAgo(item?.updatedAt)}
                         </p>
                       )}
                     </>
@@ -442,10 +442,10 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
                 </div>
 
                 {/* Hide action menu while renaming this item */}
-                {renamingId !== item.id && (
+                {renamingId !== item?.id && (
                   <ActionMenu
-                    itemId={item.id}
-                    itemTitle={item.title || item.name || ""}
+                    itemId={item?.id}
+                    itemTitle={item?.title || item?.name || ""}
                     openId={openActionId}
                     setOpenId={setOpenActionId}
                     renamingId={renamingId}

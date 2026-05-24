@@ -12,6 +12,17 @@ export class BookmarkRepository {
                 }
             }
 
+            const exists = await prisma.bookmark.findFirst({
+                where: { userId, projectId: id }
+            });
+
+            if (exists) {
+                return {
+                    success: false,
+                    message: "Already bookmarked"
+                };
+            }
+
             // find is project exits
             const isProjectExists = await prisma.project.findFirst({
                 where: { id, userId }

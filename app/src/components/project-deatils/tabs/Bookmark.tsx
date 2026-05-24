@@ -144,7 +144,7 @@ function Bookmark({ isActive }: ArchiveProps) {
             <>
               {bookmarked.map((item: BookmarkMessages) => (
                 <BookmarkItem
-                  key={item.id}
+                  key={item?.id}
                   item={item}
                   openActionId={openActionId}
                   setOpenActionId={setOpenActionId}

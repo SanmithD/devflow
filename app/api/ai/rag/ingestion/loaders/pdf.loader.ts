@@ -1,11 +1,19 @@
-import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { Document } from "@langchain/core/documents";
+import * as fs from "fs";
+import { createRequire } from "module";
 import { normalizeDocs } from "../../../utils/docs_normalizer.util";
 
-export const loadPDF = async(url: string): Promise<Document[]> => {
-    const loader = new PDFLoader(url);
+const require = createRequire(import.meta.url);
 
-    const docs = await loader.load();
+export const loadPDF = async (filePath: string): Promise<Document[]> => {
+  const pdfParse = require("pdf-parse");
+  const buffer = fs.readFileSync(filePath);
+  const parsed = await pdfParse(buffer);
 
-    return normalizeDocs(docs, url, 'pdf');
-}
+  const doc = new Document({
+    pageContent: parsed.text,
+    metadata: { source: filePath, pages: parsed.numpages },
+  });
+
+  return normalizeDocs([doc], filePath, "pdf");
+};

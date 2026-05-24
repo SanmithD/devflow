@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { BookmarkRepository } from "../repository/bookmark.repository";
 import { authOptions } from "../src/lib/auth";
+import { redis } from "../src/lib/redis";
 
 export const addNewBookmark = async (req: NextRequest) => {
     try { 
@@ -22,7 +23,7 @@ export const addNewBookmark = async (req: NextRequest) => {
         // project id
         const id = Number(body.id);
 
-        console.log('id', id);
+        await redis.del(`bookmarks:${userId}:*`);
         
         if (!id || typeof id !== 'number' || id <= 0) {
             return NextResponse.json({ message: 'Invalid id' }, { status: 400 })
@@ -66,6 +67,13 @@ export const getAllBookmark = async(req: NextRequest) => {
 
         const { limit } = body;
 
+        const cacheKey = `bookmarks:${userId}:${limit}`;
+        const cached = await redis.get<typeof response>(cacheKey);
+
+        if (cached) {
+            return NextResponse.json(cached);
+        }
+
         const bookRepo = new BookmarkRepository();
         const response = await bookRepo.getAllBookmarked({ userId: Number(userId), limit });
 
@@ -74,6 +82,8 @@ export const getAllBookmark = async(req: NextRequest) => {
         }
 
         const nextCursor = response?.data?.length === limit ? response?.data?.[0].id : null;
+
+        await redis.set(cacheKey, response, { ex: 60 });
 
         return NextResponse.json({ messages: response.data, nextCursor, hasMore: !!nextCursor }, { status: 200 });
 
@@ -109,6 +119,8 @@ export const deleteBookmarkedProject = async (req: NextRequest, id: number) => {
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })
         }
+
+        await redis.del(`bookmarks:${userId}:*`);
 
         return NextResponse.json({ message: response.message }, { status: 200 });
 

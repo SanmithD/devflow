@@ -10,7 +10,7 @@ import {
   Mic,
   MicOff,
   Square,
-  X
+  X,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -21,20 +21,11 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { isValidFile } from "../helper/validate_media_type";
-import { useUserInfo } from "../hooks/UserDetail";
+import { MediaMetadata } from "../types/chat.type";
 import BotActions from "./project-deatils/components/ChatAction";
 import { VideoLinkPreview } from "./project-deatils/components/VideoPreview";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface MediaMetadata {
-  format: string;
-  size: number;
-  url: string;
-  name: string;
-  type: string;
-}
-
-// ── File Preview Component ─────────────────────────────────────────────────────
+// ── File Preview Component (input area) ──────────────────────────────────────
 function FilePreview({
   file,
   previewUrl,
@@ -63,13 +54,15 @@ function FilePreview({
             <FileIcon size={16} className="text-blue-400" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-xs text-white font-medium truncate">{file.name}</span>
-            <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</span>
+            <span className="text-xs text-white font-medium truncate">
+              {file.name}
+            </span>
+            <span className="text-xs text-gray-400">
+              {(file.size / 1024).toFixed(1)} KB
+            </span>
           </div>
         </div>
       )}
-
-      {/* Remove button */}
       <button
         onClick={onRemove}
         className="absolute -top-2 -right-2 w-5 h-5 bg-zinc-700 hover:bg-red-500 border border-white/10 rounded-full flex items-center justify-center transition-colors shadow z-10"
@@ -78,6 +71,57 @@ function FilePreview({
         <X size={10} className="text-white" />
       </button>
     </div>
+  );
+}
+
+// ── Media Preview (inside message bubble) ─────────────────────────────────────
+function MediaPreview({ media }: { media: MediaMetadata }) {
+  const isImage = media.type.startsWith("image/");
+  const isPDF = media.format === "pdf" || media.type === "application/pdf";
+
+  if (isImage) {
+    return (
+      <a
+        href={media.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block mb-3"
+      >
+        <img
+          src={media.url}
+          alt={media.name}
+          className="max-h-48 rounded-xl border border-white/10 shadow object-cover"
+        />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={media.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 mb-3 bg-zinc-800/80 border border-white/10
+                 rounded-xl px-3 py-2.5 min-w-[160px] max-w-[260px] hover:border-blue-500/50
+                 transition-colors group"
+    >
+      <div className="shrink-0 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+        {isPDF ? (
+          <FileIcon size={16} className="text-red-400" />
+        ) : (
+          <FileIcon size={16} className="text-blue-400" />
+        )}
+      </div>
+      <div className="flex flex-col min-w-0">
+        <span className="text-xs text-white font-medium truncate group-hover:text-blue-300 transition-colors">
+          {media.name}
+        </span>
+        <span className="text-xs text-gray-400">
+          {(media.size / 1024).toFixed(1)} KB · {media.format.toUpperCase()}
+        </span>
+      </div>
+      <ArrowUp size={12} className="text-gray-500 rotate-45 shrink-0 ml-auto" />
+    </a>
   );
 }
 
@@ -92,8 +136,16 @@ function Chat() {
   const [listening, setListening] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<{ type: string; text: string }[]>([]);
+  const [messages, setMessages] = useState<{ type: string; text: string }[]>(
+    [],
+  );
   const [isDragging, setIsDragging] = useState(false);
+  // ── replace these two state lines ──
+  const [limit, setLimit] = useState<number>(20);
+  const [hasMore, setHasMore] = useState(true);
+
+  // ── replace the messages scroll container ref ──
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -103,8 +155,6 @@ function Chat() {
   const inputWrapperRef = useRef<HTMLDivElement | null>(null);
 
   let pendingProjectId: string | null = null;
-
-  const user = useUserInfo();
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -123,16 +173,27 @@ function Chat() {
   }, [message]);
 
   // ── Load past messages ───────────────────────────────────────────────────────
-  const fetchPastMessages = async () => {
+  const fetchPastMessages = async (currentLimit: number, append = false) => {
     try {
-      const res = await axios.get(`/api/projects/${Number(projectId)}/logs`);
+      const res = await axios.post(`/api/projects/${Number(projectId)}/logs`, {
+        limit: currentLimit,
+      });
       const logs = res?.data?.result || [];
+
+      // if we got fewer than requested, no more pages
+      if (logs.length < currentLimit) setHasMore(false);
+
       const formatted = logs
         .map((item: any) => [
-          { type: "user", text: item.input },
+          {
+            type: "user",
+            text: item.input,
+            media: item.media_metadata ?? undefined,
+          },
           { type: "bot", text: item.response },
         ])
         .flat();
+
       setMessages(formatted);
     } catch {
       toast.error("Failed to load messages");
@@ -141,8 +202,54 @@ function Chat() {
 
   useEffect(() => {
     if (!projectId) return;
-    fetchPastMessages();
+    fetchPastMessages(limit);
   }, [projectId]);
+
+  // ── scroll up to load more ────────────────────────────────────────────────────
+  const handleMessagesScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container || !hasMore || loading) return;
+
+    // trigger when user is within 60px of the top
+    if (container.scrollTop <= 60) {
+      const prevScrollHeight = container.scrollHeight;
+
+      setLimit((prev) => {
+        const newLimit = prev + 10;
+
+        // fetch with new limit, then restore scroll position
+        axios
+          .post(`/api/projects/${Number(projectId)}/logs`, { limit: newLimit })
+          .then((res) => {
+            const logs = res?.data?.result || [];
+            if (logs.length < newLimit) setHasMore(false);
+
+            const formatted = logs
+              .map((item: any) => [
+                {
+                  type: "user",
+                  text: item.input,
+                  media: item.media_metadata ?? undefined,
+                },
+                { type: "bot", text: item.response },
+              ])
+              .flat();
+
+            setMessages(formatted);
+
+            // restore scroll position after render
+            requestAnimationFrame(() => {
+              if (container) {
+                container.scrollTop = container.scrollHeight - prevScrollHeight;
+              }
+            });
+          })
+          .catch(() => toast.error("Failed to load more messages"));
+
+        return newLimit;
+      });
+    }
+  };
 
   // ── Cleanup preview URL ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -165,25 +272,21 @@ function Chat() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ── Upload to Cloudinary ─────────────────────────────────────────────────────
-  const uploadToCloudinary = async (file: File): Promise<{ secure_url: string; format: string; bytes: number; resource_type: string } | null> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_NAME! as string);
-
+  // ── Upload file directly to backend ──────────────────────────────────────────
+  // POST /api/upload  (multipart/form-data, field: "file")
+  // Expected response: { media_metadata: MediaMetadata }
+  const uploadFile = async (file: File): Promise<MediaMetadata | null> => {
     try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if(!process.env.NEXT_PUBLIC_CLOUDINARY_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_NAME === ""){
-        console.log('env key not found', process.env.CLOUDINARY_NAME, 'and', `${process.env.CLOUDINARY_URL}/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_NAME}/auto/upload`);
-        return null;
-      }
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_CLOUDINARY_URL}/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_NAME}/auto/upload`,
-        formData,
-      );
-      return res.data;
+      const res = await axios.post("/api/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      return res.data.media_metadata as MediaMetadata;
     } catch (error) {
-      console.log("media error", error);
+      console.error("Upload error:", error);
       toast.error("Failed to upload file");
       return null;
     }
@@ -203,20 +306,12 @@ function Chat() {
 
     if (previewFile) {
       const toastId = toast.loading("Uploading file...");
-      const data = await uploadToCloudinary(previewFile);
+      media_metadata = await uploadFile(previewFile);
       toast.dismiss(toastId);
 
-      if (!data) return;
+      if (!media_metadata) return;
 
       toast.success("File uploaded");
-
-      media_metadata = {
-        url: data.secure_url,
-        format: data.format,
-        size: previewFile.size,
-        name: previewFile.name,
-        type: previewFile.type,
-      };
     }
 
     setPreviewFile(null);
@@ -226,12 +321,10 @@ function Chat() {
     setLoading(true);
     setMessages((prev) => [
       ...prev,
-      { type: "user", text: userText },
+      { type: "user", text: userText, media: media_metadata ?? undefined },
       { type: "bot", text: "", streaming: true } as any,
     ]);
     setMessage("");
-
-    console.log('meta data', JSON.stringify(media_metadata))
 
     try {
       const response = await fetch("/api/projects/", {
@@ -261,7 +354,9 @@ function Chat() {
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((l) => l.trim().startsWith("data:"));
+        const lines = chunk
+          .split("\n")
+          .filter((l) => l.trim().startsWith("data:"));
 
         for (const line of lines) {
           const data = line.replace(/^data:\s*/, "").trim();
@@ -329,7 +424,8 @@ function Chat() {
     }
 
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       toast.error("Speech Recognition not supported in this browser");
@@ -338,14 +434,11 @@ function Chat() {
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-
     recognition.onstart = () => setListening(true);
     recognition.onend = () => setListening(false);
-
     recognition.onresult = (event: any) => {
       let transcript = "";
       for (let i = 0; i < event.results.length; i++) {
@@ -353,12 +446,10 @@ function Chat() {
       }
       setMessage(transcript);
     };
-
     recognition.onerror = () => {
       toast.error("Microphone error");
       setListening(false);
     };
-
     recognition.start();
   };
 
@@ -367,12 +458,10 @@ function Chat() {
     e.preventDefault();
     setIsDragging(true);
   };
-
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
   };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
@@ -398,20 +487,30 @@ function Chat() {
     processFile(file);
   };
 
-  const handleFileButtonClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleFileButtonClick = () => fileInputRef.current?.click();
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full w-full">
       {/* ── Messages ── */}
-      <div className="flex-1 w-full custom-scroll px-4 py-3 space-y-3">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+        className="flex-1 w-full custom-scroll px-4 py-3 space-y-3"
+      >
+        {hasMore && (
+          <div className="flex justify-center py-2">
+            <span className="text-xs text-gray-500">
+              Scroll up to load more
+            </span>
+          </div>
+        )}
         {messages.map((msg: any, index) =>
           msg.type === "user" ? (
             <div key={index} className="flex justify-end">
               <div className="group flex flex-col items-end max-w-[70%]">
                 <div className="px-4 py-2 w-full rounded-2xl shadow bg-gray-800 text-white">
+                  {msg.media && <MediaPreview media={msg.media} />}
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 transition mt-1">
@@ -433,27 +532,25 @@ function Chat() {
               <div className="group flex flex-col max-w-[90%]">
                 <div className="px-4 py-2 rounded-2xl shadow bg-transparent text-white">
                   <div
-                    className="
-                      prose prose-sm max-w-none text-white
-                      [&_p]:my-2 [&_p]:mb-8 [&_p]:leading-6
-                      [&_ul]:my-8 [&_ul]:pl-10
-                      [&_ol]:my-1 [&_ol]:pl-5 [&_ol]:mb-10
-                      [&_li]:my-2 [&_li]:leading-6
-                      [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-base [&_h1]:font-semibold
-                      [&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold
-                      [&_h3]:mt-2 [&_h3]:mb-0 [&_h3]:text-sm [&_h3]:font-semibold
-                      [&_h4]:mt-1 [&_h4]:mb-0
-                      [&_pre]:my-3
-                      [&_blockquote]:my-0 [&_blockquote]:py-0
-                      [&_table]:my-0
-                      [&_hr]:my-7
-                      [&_img]:rounded-xl [&_img]:my-0
-                      [&_a]:text-blue-400
-                      [&_strong]:text-white
-                      [&_code]:text-pink-400
-                      [&>*:first-child]:mt-0
-                      [&>*:last-child]:mb-0
-                    "
+                    className="prose prose-sm max-w-none text-white
+                    [&_p]:my-2 [&_p]:mb-8 [&_p]:leading-6
+                    [&_ul]:my-8 [&_ul]:pl-10
+                    [&_ol]:my-1 [&_ol]:pl-5 [&_ol]:mb-10
+                    [&_li]:my-2 [&_li]:leading-6
+                    [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-base [&_h1]:font-semibold
+                    [&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold
+                    [&_h3]:mt-2 [&_h3]:mb-0 [&_h3]:text-sm [&_h3]:font-semibold
+                    [&_h4]:mt-1 [&_h4]:mb-0
+                    [&_pre]:my-3
+                    [&_blockquote]:my-0 [&_blockquote]:py-0
+                    [&_table]:my-0
+                    [&_hr]:my-7
+                    [&_img]:rounded-xl [&_img]:my-0
+                    [&_a]:text-blue-400
+                    [&_strong]:text-white
+                    [&_code]:text-pink-400
+                    [&>*:first-child]:mt-0
+                    [&>*:last-child]:mb-0"
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
@@ -465,7 +562,9 @@ function Chat() {
                             <div className="relative my-3">
                               <button
                                 onClick={() => {
-                                  navigator.clipboard.writeText(String(children));
+                                  navigator.clipboard.writeText(
+                                    String(children),
+                                  );
                                   toast.success("Copied code");
                                 }}
                                 className="absolute top-2 right-2 text-xs bg-zinc-800 px-2 py-1 rounded text-white z-10"
@@ -498,12 +597,10 @@ function Chat() {
                       {msg.text}
                     </ReactMarkdown>
                   </div>
-
                   {msg.streaming && (
                     <LoaderIcon className="animate-spin mt-1" size={14} />
                   )}
                 </div>
-
                 {msg.text && !msg.streaming && (
                   <BotActions
                     text={msg.text}
@@ -522,26 +619,18 @@ function Chat() {
       <div className="mt-20 md:mt-8 place-content-end">
         <div className="p-3">
           <div className="max-w-3xl mx-auto">
-            {/* 
-              Outer wrapper — handles drag-and-drop highlight.
-              Split into two visual layers so the border/ring sits on
-              the outer div while content lives inside.
-            */}
             <div
               ref={inputWrapperRef}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`
-                relative rounded-3xl border transition-all duration-200
-                ${isDragging
-                  ? "border-blue-500 ring-2 ring-blue-500/40 bg-blue-500/5"
-                  : "border-white/10 bg-zinc-900/60 focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20"
-                }
-                shadow-lg backdrop-blur-sm
-              `}
+              className={`relative rounded-3xl border transition-all duration-200
+                ${
+                  isDragging
+                    ? "border-blue-500 ring-2 ring-blue-500/40 bg-blue-500/5"
+                    : "border-white/10 bg-zinc-900/60 focus-within:border-blue-500/60 focus-within:ring-2 focus-within:ring-blue-500/20"
+                } shadow-lg backdrop-blur-sm`}
             >
-              {/* Drag overlay label */}
               {isDragging && (
                 <div className="absolute inset-0 rounded-3xl flex items-center justify-center z-20 pointer-events-none">
                   <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
@@ -551,9 +640,9 @@ function Chat() {
                 </div>
               )}
 
-              <div className={`flex flex-col gap-0 ${isDragging ? "opacity-30 pointer-events-none" : ""}`}>
-
-                {/* ── File preview strip (shown above text when file is attached) ── */}
+              <div
+                className={`flex flex-col gap-0 ${isDragging ? "opacity-30 pointer-events-none" : ""}`}
+              >
                 {previewFile && previewUrl && (
                   <div className="px-4 pt-3 pb-1">
                     <FilePreview
@@ -564,9 +653,7 @@ function Chat() {
                   </div>
                 )}
 
-                {/* ── Text input row ── */}
                 <div className="flex items-end gap-2 px-3 py-2">
-                  {/* Hidden file input */}
                   <input
                     hidden
                     ref={fileInputRef}
@@ -576,22 +663,19 @@ function Chat() {
                     onChange={handleFileChange}
                   />
 
-                  {/* Attach button */}
                   <button
                     onClick={handleFileButtonClick}
                     title="Attach file"
-                    className={`
-                      p-2 rounded-xl transition-all duration-150 shrink-0 self-end mb-0.5
-                      ${previewFile
-                        ? "text-blue-400 bg-blue-500/15 hover:bg-blue-500/25"
-                        : "text-gray-400 hover:text-white hover:bg-white/10"
-                      }
-                    `}
+                    className={`p-2 rounded-xl transition-all duration-150 shrink-0 self-end mb-0.5
+                      ${
+                        previewFile
+                          ? "text-blue-400 bg-blue-500/15 hover:bg-blue-500/25"
+                          : "text-gray-400 hover:text-white hover:bg-white/10"
+                      }`}
                   >
                     <FilePlus2Icon size={18} />
                   </button>
 
-                  {/* Textarea */}
                   <textarea
                     ref={textareaRef}
                     value={message}
@@ -613,24 +697,20 @@ function Chat() {
                     className="flex-1 bg-transparent outline-none py-2 leading-6 min-h-10 text-white placeholder:text-gray-500 text-sm"
                   />
 
-                  {/* Right-side controls */}
                   <div className="flex items-center gap-1 shrink-0 self-end mb-0.5">
-                    {/* Mic */}
                     <button
                       onClick={toggleListening}
                       title={listening ? "Stop listening" : "Start voice input"}
-                      className={`
-                        p-2 rounded-xl transition-all duration-150
-                        ${listening
-                          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
-                          : "text-gray-400 hover:text-white hover:bg-white/10"
-                        }
-                      `}
+                      className={`p-2 rounded-xl transition-all duration-150
+                        ${
+                          listening
+                            ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
+                            : "text-gray-400 hover:text-white hover:bg-white/10"
+                        }`}
                     >
                       {listening ? <MicOff size={18} /> : <Mic size={18} />}
                     </button>
 
-                    {/* Send / Stop */}
                     {loading ? (
                       <button
                         onClick={handleStop}
@@ -652,12 +732,12 @@ function Chat() {
                   </div>
                 </div>
 
-                {/* ── Bottom hint bar (file attached state) ── */}
                 {previewFile && (
                   <div className="px-4 pb-2.5 flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                     <span className="text-xs text-gray-500">
-                      {previewFile.type.startsWith("image/") ? "Image" : "File"} attached · {(previewFile.size / 1024).toFixed(1)} KB ·{" "}
+                      {previewFile.type.startsWith("image/") ? "Image" : "File"}{" "}
+                      attached · {(previewFile.size / 1024).toFixed(1)} KB ·{" "}
                       <button
                         onClick={removeFile}
                         className="text-red-400/80 hover:text-red-400 transition-colors"
@@ -672,7 +752,6 @@ function Chat() {
           </div>
         </div>
 
-        {/* Terms */}
         <div
           className="w-full place-content-end cursor-pointer mb-0 flex justify-center"
           onClick={() => router.push("/dashboard/terms")}

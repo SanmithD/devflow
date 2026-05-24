@@ -53,13 +53,16 @@ export class AgentChatRepository {
         message,
         ip,
         currentProjectId,
-        abortSignal
+        abortSignal,
+        media_metadata
+
     }: {
         userId: number;
         message: string;
         ip: string;
         currentProjectId: number;
-        abortSignal: AbortSignal
+        abortSignal: AbortSignal;
+        media_metadata
     }) => {
         try {
 
@@ -145,6 +148,7 @@ export class AgentChatRepository {
                                 currentProjectId,
                                 fullResponse,
                                 message,
+                                media_metadata
                             });
                         }
 
@@ -192,18 +196,19 @@ export class AgentChatRepository {
         message,
         ip,
         currentProjectId,
-        fullResponse
-
+        fullResponse,
+        media_metadata
     }: {
         userId: number;
         message: string;
         ip: string;
         fullResponse: string;
         currentProjectId: number;
+        media_metadata: any;
     }) => {
         try {
 
-            await prisma.aILog.create({
+            const newChat = await prisma.aILog.create({
                 data: {
                     userId: Number(userId),
                     input: message,
@@ -212,6 +217,19 @@ export class AgentChatRepository {
                     response: fullResponse,
                 },
             });
+
+            if (media_metadata) {
+                const { format, size, url, name, type } = media_metadata;
+                await this.uploadMediaFilesInDB({
+                    userId: Number(userId),
+                    chatId: newChat.id,
+                    format,
+                    size: String(size),
+                    url,
+                    name,
+                    type,
+                });
+            }
 
             return {
                 success: true,
@@ -326,6 +344,51 @@ export class AgentChatRepository {
                 data: null,
                 success: false,
                 message: 'server error'
+            }
+        }
+    }
+
+    getAllAgentChat = async ({ userId, limit = 20, id }: { userId: number; limit: number, id: number }) => {
+        try {
+
+            if (!limit || !userId) {
+                return {
+                    success: false,
+                    data: null,
+                    message: 'Limit and userId is required',
+                }
+            }
+
+            const res = await prisma.aILog.findMany({
+                where: {
+                    userId: Number(userId),
+                    projectId: id
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                take: limit
+            });
+
+            if (!res) {
+                return {
+                    success: false,
+                    data: null,
+                    message: 'Project not found'
+                }
+            }
+
+            return {
+                success: true,
+                data: res,
+                message: 'Project found'
+            }
+
+        } catch (error) {
+            console.log('Server error', error);
+            return {
+                success: false,
+                message: 'Internal Server error',
             }
         }
     }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseMediaFiles } from "../api/ai/rag/ingestion/parse_media_files";
 import { AgentChatRepository } from "../repository/project.repository";
 import { authOptions } from "../src/lib/auth";
+import { redis } from "../src/lib/redis";
 
 export const agentChat = async (req: NextRequest) => {
     try {
@@ -52,21 +53,7 @@ export const agentChat = async (req: NextRequest) => {
 
             console.log('meta data 2', JSON.stringify(media_metadata))
 
-            const { format, size, url, name, type } = media_metadata;
-
-            const res = await chatRepo.uploadMediaFilesInDB({
-                userId: Number(userId),
-                chatId: currentProjectId,
-                format,
-                size: String(size),
-                url,
-                name,
-                type
-            });
-
-            if (!res.success) {
-                return NextResponse.json({ message: res.message }, { status: 400 })
-            }
+            const { format, url } = media_metadata;
 
             await parseMediaFiles(url, format, currentProjectId);
         }
@@ -76,7 +63,8 @@ export const agentChat = async (req: NextRequest) => {
             ip,
             message,
             abortSignal,
-            currentProjectId
+            currentProjectId,
+            media_metadata
         });
 
         const stream = data.data;
@@ -94,5 +82,58 @@ export const agentChat = async (req: NextRequest) => {
             { message: "Internal Server Error" },
             { status: 500 }
         );
+    }
+}
+
+
+export const getAllChat = async (req: NextRequest, id: number) => {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session?.user?.id) {
+            return NextResponse.json(
+                { message: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+
+        const userId = session?.user.id;
+
+        const body = await req.json();
+
+        const { limit } = body;
+
+        const project_id = Number(id);
+
+        if (!project_id || isNaN(project_id)) {
+            return NextResponse.json(
+                { message: "Invalid projectId" },
+                { status: 400 }
+            );
+        }
+
+        const cacheKey = `chat:${userId}:${id}:${limit}`;
+        const cached = await redis.get<typeof response>(cacheKey);
+
+        if (cached) {
+            return NextResponse.json(cached);
+        }
+
+        const chatRepo = new AgentChatRepository();
+        const response = await chatRepo.getAllAgentChat({ userId: Number(userId), limit, id });
+
+        if (!response.success) {
+            return NextResponse.json({ message: response.message }, { status: 400 })
+        }
+
+        const nextCursor = response?.data?.length === limit ? response?.data?.[0].id : null;
+
+        await redis.set(cacheKey, response, { ex: 60 });
+
+        return NextResponse.json({ messages: response.data, nextCursor, hasMore: !!nextCursor }, { status: 200 });
+
+    } catch (error) {
+        console.log(error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

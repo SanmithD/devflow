@@ -1,8 +1,10 @@
+import { MediaMetadata } from "@/app/src/types/chat.type";
 import { ai } from "../config/ai.config";
 
 type ChatMessage = {
     role: "system" | "user" | "assistant";
     content: string;
+    media?: MediaMetadata;
 }
 
 export const generateAIResponse = async (
