@@ -85,7 +85,6 @@ export const agentChat = async (req: NextRequest) => {
     }
 }
 
-
 export const getAllChat = async (req: NextRequest, id: number) => {
     try {
         const session = await getServerSession(authOptions);

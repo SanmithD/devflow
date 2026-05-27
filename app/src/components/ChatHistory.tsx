@@ -119,7 +119,7 @@ function ActionMenu({
     } catch (error) {
       console.error("archive error", error);
       toast.error("Failed to archive");
-    }
+    } 
   };
 
   const actions = [

@@ -284,7 +284,9 @@ function Chat() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      return res.data.media_metadata as MediaMetadata;
+      console.log('client data', res.data);
+
+      return res.data.data as MediaMetadata;
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Failed to upload file");
@@ -307,6 +309,8 @@ function Chat() {
     if (previewFile) {
       const toastId = toast.loading("Uploading file...");
       media_metadata = await uploadFile(previewFile);
+
+      console.log('meta', media_metadata);
       toast.dismiss(toastId);
 
       if (!media_metadata) return;
