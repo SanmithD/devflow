@@ -9,9 +9,17 @@ import { loadPPTX } from "./loaders/pptx.load";
 import { loadText } from "./loaders/text.load";
 
 export const parseMediaFiles = async (
-  localPath: string,
-  format: string,
-  projectId: number
+  {
+    localPath,
+    format,
+    projectId,
+    file_name,
+  }: {
+    localPath: string,
+    format: string,
+    projectId?: number,
+    file_name: string;
+  }
 ) => {
   try {
     const fileType = (format || localPath.split(".").pop() || "").toLocaleLowerCase();
@@ -32,7 +40,7 @@ export const parseMediaFiles = async (
     if (!data) throw new Error("Parsing failed — loader returned nothing");
 
     for (const doc of data) {
-      await ingest(doc.pageContent, projectId);
+      await ingest(doc.pageContent, projectId, file_name);
     }
   } catch (error) {
     throw new Error(`Failed to parse media file: ${error}`);

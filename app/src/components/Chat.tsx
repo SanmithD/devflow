@@ -275,10 +275,11 @@ function Chat() {
   // ── Upload file directly to backend ──────────────────────────────────────────
   // POST /api/upload  (multipart/form-data, field: "file")
   // Expected response: { media_metadata: MediaMetadata }
-  const uploadFile = async (file: File): Promise<MediaMetadata | null> => {
+  const uploadFile = async (file: File, projectId: Number): Promise<MediaMetadata | null> => {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("projectId", projectId);
 
       const res = await axios.post("/api/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -308,7 +309,7 @@ function Chat() {
 
     if (previewFile) {
       const toastId = toast.loading("Uploading file...");
-      media_metadata = await uploadFile(previewFile);
+      media_metadata = await uploadFile(previewFile, Number(projectId));
 
       console.log('meta', media_metadata);
       toast.dismiss(toastId);

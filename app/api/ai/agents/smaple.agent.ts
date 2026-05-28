@@ -1,3 +1,4 @@
+import { MediaMetadata } from "@/app/src/types/chat.type";
 import { addSession, getSession } from "../memory/session.memory";
 import "../tools";
 import { createAgentAuditLog } from "../utils/agent_audit.util";
@@ -11,7 +12,8 @@ import { runValidatorSynthesizer } from "./validator_synthesizer.agent";
 export const runAgent = async (
     userInput: string,
     session_id: string,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    media_metadata: MediaMetadata
 ) => {
     try {
         const history = getSession(session_id);
@@ -23,7 +25,8 @@ export const runAgent = async (
         const resonerRes = await runReasoner({
             userInput,
             session_id,
-            abortSignal
+            abortSignal,
+            media_metadata
         });
 
         if (!resonerRes) throw new Error('Fail to reason');

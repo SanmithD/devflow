@@ -20,11 +20,18 @@ export const uploadFiles = async (req: NextRequest) => {
 
         const formData = await req.formData();
         const file = formData.get('file') as File | null;
+        const projectIdRaw = formData.get('projectId');
 
         if (!file) return NextResponse.json({ message: 'File is required' }, { status: 400 });
 
+        if (!projectIdRaw || typeof projectIdRaw !== "string") {
+            return NextResponse.json({ message: 'Invalid projectId' }, { status: 400 });
+        }
+        
+        const projectId = Number(projectIdRaw);
+
         const uploadRepo = new UploadRepository();
-        const meta_data = await uploadRepo.uploadMediaFiles(file);
+        const meta_data = await uploadRepo.uploadMediaFiles(file, projectId);
 
         if (!meta_data) return NextResponse.json({ message: 'Failed to save' }, { status: 400 });
 

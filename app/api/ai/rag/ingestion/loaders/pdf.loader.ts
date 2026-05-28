@@ -1,4 +1,5 @@
 import { Document } from "@langchain/core/documents";
+import "@napi-rs/canvas";
 import * as fs from "fs";
 import { createRequire } from "module";
 import { normalizeDocs } from "../../../utils/docs_normalizer.util";

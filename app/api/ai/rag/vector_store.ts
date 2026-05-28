@@ -2,7 +2,8 @@ type VectorItem = {
     id: string;
     embedding: number[];
     text: string;
-    projectId: number;
+    projectId?: number;
+    source?: string;
 };
 
 class VectorStore {
@@ -35,6 +36,7 @@ class VectorStore {
             topK?: number;
             projectId?: number;
             minScore?: number;
+            source?: string;
         }
     ) {
         const { topK = 5, projectId, minScore = 0 } = options || {};

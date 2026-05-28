@@ -1,5 +1,7 @@
 import { runAgent } from "../api/ai/agents/smaple.agent";
 import { prisma } from "../src/lib/db";
+import { redis } from "../src/lib/redis";
+import { MediaMetadata } from "../src/types/chat.type";
 
 export class AgentChatRepository {
 
@@ -62,7 +64,7 @@ export class AgentChatRepository {
         ip: string;
         currentProjectId: number;
         abortSignal: AbortSignal;
-        media_metadata
+        media_metadata: MediaMetadata
     }) => {
         try {
 
@@ -98,7 +100,8 @@ export class AgentChatRepository {
                         const agentStream = await runAgent(
                             message,
                             String(currentProjectId),
-                            abortSignal
+                            abortSignal,
+                            media_metadata
                         );
 
                         if (!agentStream) {
@@ -249,13 +252,22 @@ export class AgentChatRepository {
 
             if (!userId) {
                 return {
-                    message: 'Invalid Id',
+                    message: 'Authorzied user',
                     success: false
                 }
             }
 
-            const response = await prisma.user.findFirst({
-                where: { id: Number(userId) }
+            const redisCache = await redis.get(`user-${userId}-verified`);
+
+            if(redisCache){
+                return {
+                    message: 'user veried',
+                    success: true
+                }
+            }
+
+            const response = await prisma.user.findUnique({
+                where: { id: userId }
             });
 
             if (!response) {
@@ -278,6 +290,8 @@ export class AgentChatRepository {
                     success: false
                 }
             }
+
+            await redis.set(`user-${userId}-verified`, true, { ex: 60 * 1000 });
 
             return {
                 message: 'Authorzied user',

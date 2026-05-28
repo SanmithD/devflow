@@ -3,7 +3,7 @@ import { chunkText } from "./chunk";
 import { createEmbedder } from "./embedding";
 import { vectorStore } from "./vector_store";
 
-export const ingest = async(text: string, projectId: number) => {
+export const ingest = async(text: string, projectId?: number, filename?: string) => {
 
     if (!text) throw new Error("Empty text");
 
@@ -18,7 +18,8 @@ export const ingest = async(text: string, projectId: number) => {
             id: randomUUID(), // no collisions
             embedding,
             text: chunk,
-            projectId: Number(projectId)
+            projectId: Number(projectId),
+            source: filename
         })
     }
 }

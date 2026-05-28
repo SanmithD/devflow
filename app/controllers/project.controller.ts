@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-import { parseMediaFiles } from "../api/ai/rag/ingestion/parse_media_files";
 import { AgentChatRepository } from "../repository/project.repository";
 import { authOptions } from "../src/lib/auth";
 import { redis } from "../src/lib/redis";
@@ -47,15 +46,6 @@ export const agentChat = async (req: NextRequest) => {
             });
 
             currentProjectId = newProject.data?.id;
-        }
-
-        if (media_metadata) {
-
-            console.log('meta data 2', JSON.stringify(media_metadata))
-
-            const { format, url } = media_metadata;
-
-            await parseMediaFiles(url, format, currentProjectId);
         }
 
         const data = await chatRepo.getStreamResponse({

@@ -1,3 +1,4 @@
+import { MediaMetadata } from "@/app/src/types/chat.type";
 import { generateAIResponse } from "../llm/openai.llm";
 import { getSession } from "../memory/session.memory";
 import { retrive } from "../rag/retrive";
@@ -5,21 +6,26 @@ import { retrive } from "../rag/retrive";
 export const runReasoner = async ({
     userInput,
     session_id,
-    abortSignal
+    abortSignal,
+    media_metadata
 }: {
     userInput: string;
     session_id: string;
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    media_metadata: MediaMetadata
 }) => {
     try {
 
         // fetch context
         const chunks = await retrive(userInput, session_id);
 
-        const context = chunks
-            .slice(0, 3)
-            .map(c => c.text)
-            .join("\n");
+        const fallbackContext = media_metadata && chunks.length === 0
+            ? `A file named "${media_metadata.name}" (${media_metadata.format}) was uploaded for this session.`
+            : "";
+
+        const context = chunks.length > 0
+            ? chunks.slice(0, 3).map(c => c.text).join("\n")
+            : fallbackContext;
 
         const history = getSession(session_id);
 
