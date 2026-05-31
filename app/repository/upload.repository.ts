@@ -39,6 +39,8 @@ export class UploadRepository {
                 project_id = lastProject ? lastProject.id + 1 : 1;
             }
 
+            console.log('meta_data_2', media_metadata);
+
             await parseMediaFiles({
                 localPath: media_metadata.url,
                 format: media_metadata.format,

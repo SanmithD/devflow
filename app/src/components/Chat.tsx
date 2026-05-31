@@ -178,10 +178,10 @@ function Chat() {
       const res = await axios.post(`/api/projects/${Number(projectId)}/logs`, {
         limit: currentLimit,
       });
-      const logs = res?.data?.result || [];
+      const logs = res?.data?.messages || [];
 
       // if we got fewer than requested, no more pages
-      if (logs.length < currentLimit) setHasMore(false);
+      setHasMore(res?.data?.hasMore ?? false);
 
       const formatted = logs
         .map((item: any) => [
@@ -221,8 +221,8 @@ function Chat() {
         axios
           .post(`/api/projects/${Number(projectId)}/logs`, { limit: newLimit })
           .then((res) => {
-            const logs = res?.data?.result || [];
-            if (logs.length < newLimit) setHasMore(false);
+            const logs = res?.data?.messages || [];
+            setHasMore(res?.data?.hasMore ?? false);
 
             const formatted = logs
               .map((item: any) => [
@@ -275,11 +275,11 @@ function Chat() {
   // ── Upload file directly to backend ──────────────────────────────────────────
   // POST /api/upload  (multipart/form-data, field: "file")
   // Expected response: { media_metadata: MediaMetadata }
-  const uploadFile = async (file: File, projectId: Number): Promise<MediaMetadata | null> => {
+  const uploadFile = async (file: File, projectId: string): Promise<MediaMetadata | null> => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("projectId", projectId);
+      formData.append("projectId", String(projectId));
 
       const res = await axios.post("/api/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -309,7 +309,7 @@ function Chat() {
 
     if (previewFile) {
       const toastId = toast.loading("Uploading file...");
-      media_metadata = await uploadFile(previewFile, Number(projectId));
+      media_metadata = await uploadFile(previewFile, String(projectId));
 
       console.log('meta', media_metadata);
       toast.dismiss(toastId);
@@ -477,7 +477,7 @@ function Chat() {
 
   // ── File helpers ─────────────────────────────────────────────────────────────
   const processFile = (file: File) => {
-    if (!isValidFile(file)) {
+    if (!isValidFile(file)) { 
       toast.error("Invalid file type (no audio/video allowed)");
       return;
     }
@@ -665,6 +665,7 @@ function Chat() {
                     type="file"
                     name="media"
                     id="media"
+                    accept=".jpg,.jpeg,.png,.svg,.pdf,.txt,.json,.csv,.docx,.xlsx"
                     onChange={handleFileChange}
                   />
 
