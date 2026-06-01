@@ -1,14 +1,14 @@
 import { Document } from "@langchain/core/documents";
-import fs from "fs/promises";
+// import * as pdf from 'pdf-parse';
 import { normalizeDocs } from "../../../utils/docs_normalizer.util";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdf = require('pdf-parse');
 
-export const loadPDF = async (filePath: string): Promise<Document[]> => {
+export const loadPDF = async (filePath: string, file: File): Promise<Document[]> => {
   try {
-    const buffer = await fs.readFile(filePath);
+    console.log("file in pdf", { name: file.name, size: file.size, type: file.type });
 
-    const pdfModule = await import("pdf-parse");
-    const pdf = pdfModule.default;
-
+    const buffer = Buffer.from(await file.arrayBuffer());
     const pdfData = await pdf(buffer);
 
     if (!pdfData.text || pdfData.text.trim().length === 0) {

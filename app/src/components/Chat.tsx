@@ -275,7 +275,10 @@ function Chat() {
   // ── Upload file directly to backend ──────────────────────────────────────────
   // POST /api/upload  (multipart/form-data, field: "file")
   // Expected response: { media_metadata: MediaMetadata }
-  const uploadFile = async (file: File, projectId: string): Promise<MediaMetadata | null> => {
+  const uploadFile = async (
+    file: File,
+    projectId: string,
+  ): Promise<MediaMetadata | null> => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -285,7 +288,7 @@ function Chat() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      console.log('client data', res.data);
+      console.log("client data", res.data);
 
       return res.data.data as MediaMetadata;
     } catch (error) {
@@ -311,7 +314,7 @@ function Chat() {
       const toastId = toast.loading("Uploading file...");
       media_metadata = await uploadFile(previewFile, String(projectId));
 
-      console.log('meta', media_metadata);
+      console.log("meta", media_metadata);
       toast.dismiss(toastId);
 
       if (!media_metadata) return;
@@ -477,7 +480,8 @@ function Chat() {
 
   // ── File helpers ─────────────────────────────────────────────────────────────
   const processFile = (file: File) => {
-    if (!isValidFile(file)) { 
+    console.log("file type:", file.type, "file name:", file.name);
+    if (!isValidFile(file)) {
       toast.error("Invalid file type (no audio/video allowed)");
       return;
     }
@@ -487,7 +491,9 @@ function Chat() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("handleFileChange triggered", e.target.files);
     const file = e.target.files?.[0];
+    console.log("selected file:", file?.name, file?.type, file?.size);
     if (!file) return;
     processFile(file);
   };
@@ -665,7 +671,7 @@ function Chat() {
                     type="file"
                     name="media"
                     id="media"
-                    accept=".jpg,.jpeg,.png,.svg,.pdf,.txt,.json,.csv,.docx,.xlsx"
+                    accept=".jpg,.jpeg,.png,.svg,.pdf,.txt,.json,.csv,.docx,.xlsx,.pptx"
                     onChange={handleFileChange}
                   />
 

@@ -31,6 +31,9 @@ export const uploadFiles = async (req: NextRequest) => {
         const projectId = Number(projectIdRaw);
 
         const uploadRepo = new UploadRepository();
+
+        console.log('file in controller', JSON.stringify(file));
+        
         const meta_data = await uploadRepo.uploadMediaFiles(file, projectId);
 
         if (!meta_data) return NextResponse.json({ message: 'Failed to save' }, { status: 400 });

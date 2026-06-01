@@ -8,31 +8,33 @@ import { loadPDF } from "./loaders/pdf.loader";
 import { loadPPTX } from "./loaders/pptx.load";
 import { loadText } from "./loaders/text.load";
 
-export const parseMediaFiles = async (
-  {
-    localPath,
-    format,
-    projectId,
-    file_name,
-  }: {
-    localPath: string,
-    format: string,
-    projectId?: number,
-    file_name: string;
-  }
-) => {
+export const parseMediaFiles = async ({
+  localPath,
+  format,
+  projectId,
+  file_name,
+  file,
+}: {
+  localPath: string;
+  format: string;
+  projectId?: number;
+  file_name: string;
+  file: File;
+}) => {
   try {
-    const fileType = (format || localPath.split(".").pop() || "").toLocaleLowerCase();
+    const fileType = (format || localPath.split(".").pop() || "").toLowerCase();
+
+    console.log("file in parse", { name: file.name, size: file.size, type: file.type });
 
     let data: Document[] | undefined;
 
     switch (fileType) {
-      case "pdf": data = await loadPDF(localPath); break;
-      case "txt": data = await loadText(localPath); break;
-      case "csv": data = await loadCSV(localPath); break;
-      case "pptx": data = await loadPPTX(localPath); break;
-      case "docx": data = await loadDocx(localPath); break;
-      case "json": data = await loadJSON(localPath); break;
+      case "pdf": data = await loadPDF(localPath, file); break;
+      case "txt": data = await loadText(file); break;
+      case "csv": data = await loadCSV(localPath, file); break;
+      case "pptx": data = await loadPPTX(localPath, file); break;
+      case "docx": data = await loadDocx(localPath, file); break;
+      case "json": data = await loadJSON(localPath, file); break;
       default:
         throw new Error(`Unsupported file type: ${fileType}`);
     }
@@ -45,9 +47,8 @@ export const parseMediaFiles = async (
   } catch (error) {
     throw new Error(`Failed to parse media file: ${error}`);
   } finally {
-    // Clean up temp file after parsing
     if (fs.existsSync(localPath)) {
       fs.unlink(localPath, () => { });
     }
   }
-}
+};
