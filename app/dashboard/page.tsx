@@ -8,8 +8,9 @@ import Chat from "../src/components/Chat";
 import ChatHistory from "../src/components/ChatHistory";
 import Navbar from "../src/components/Navbar";
 import Details from "../src/components/project-deatils/Details";
+import { UserType } from "../src/types/profile.type";
 
-export default function DashboardPage() {
+export default function DashboardPage({ user }: { user: UserType | null }) {
   const router = useRouter();
 
   const [showLeft, setShowLeft] = useState<boolean>(true);
@@ -70,9 +71,13 @@ export default function DashboardPage() {
     window.addEventListener("mouseup", handleMouseUp);
   };
 
+  if (!user) {
+    return <div>No user found</div>;
+  }
+
   return (
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
-      <Navbar />
+      <Navbar user={user} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* LEFT SIDEBAR */}

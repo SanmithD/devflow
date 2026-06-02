@@ -32,9 +32,9 @@ export const parseMediaFiles = async ({
       case "pdf": data = await loadPDF(localPath, file); break;
       case "txt": data = await loadText(file); break;
       case "csv": data = await loadCSV(localPath, file); break;
-      case "pptx": data = await loadPPTX(localPath, file); break;
-      case "docx": data = await loadDocx(localPath, file); break;
-      case "json": data = await loadJSON(localPath, file); break;
+      case "pptx": data = await loadPPTX(file); break;
+      case "docx": data = await loadDocx(file); break;
+      case "json": data = await loadJSON(file); break;
       default:
         throw new Error(`Unsupported file type: ${fileType}`);
     }

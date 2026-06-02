@@ -1,26 +1,30 @@
 import { Document } from "@langchain/core/documents";
+import mammoth from "mammoth";
 import { normalizeDocs } from "../../../utils/docs_normalizer.util";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const officeParser = require("officeparser");
-
-export const loadDocx = async (filePath: string, file: File): Promise<Document[]> => {
+export const loadDocx = async (
+  file: File
+): Promise<Document[]> => {
   try {
+    // File -> Buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const result = await officeParser.parseOfficeAsync(buffer, { fileType: "docx" });
+    // extract text
+    const result = await mammoth.extractRawText({ buffer });
 
-    // result is either a string or an object with toText()
-    const text = typeof result === "string" 
-      ? result 
-      : result?.toText?.() ?? result?.content?.map((c: any) => c.text).join("\n") ?? "";
+    const text = result.value; // plain text
+
+    console.log("DOCX text:", text);
 
     const doc = new Document({
       pageContent: text || "No text found in DOCX",
-      metadata: { source: filePath, type: "docx" },
+      metadata: {
+        source: file.name,
+        type: "docx",
+      },
     });
 
-    return normalizeDocs([doc], filePath, "docx");
+    return normalizeDocs([doc], file.name, "docx");
   } catch (err) {
     console.error("DOCX parsing error:", err);
     throw new Error(`Failed to parse DOCX: ${err}`);
