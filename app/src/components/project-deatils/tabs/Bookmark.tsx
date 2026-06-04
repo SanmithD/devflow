@@ -142,14 +142,16 @@ function Bookmark({ isActive }: ArchiveProps) {
             <ArchiveEmpty />
           ) : (
             <>
-              {bookmarked.map((item: BookmarkMessages) => (
-                <BookmarkItem
-                  key={item?.id}
-                  item={item}
-                  openActionId={openActionId}
-                  setOpenActionId={setOpenActionId}
-                />
-              ))}
+              {bookmarked.map((item: BookmarkMessages) =>
+                item?.id ? (
+                  <BookmarkItem
+                    key={item.id}
+                    item={item}
+                    openActionId={openActionId}
+                    setOpenActionId={setOpenActionId}
+                  />
+                ) : null,
+              )}
 
               <div
                 ref={observerRef}

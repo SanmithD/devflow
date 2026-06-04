@@ -8,13 +8,13 @@ export const getUser = async () => {
 
         if (!session) throw new Error("Session not found");
 
-        const user_id = Number(session.user.id);
+        const user_id = session.user.id;
 
         if (!user_id) throw new Error("Invalid ID");
 
         const user = await prisma.user.findUnique({
             where: {
-                id: user_id,
+                id: Number(user_id),
             },
             select: {
                 id: true,

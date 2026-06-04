@@ -1,6 +1,7 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from 'bcrypt';
 import { NextAuthOptions } from "next-auth";
+import { AdapterUser } from "next-auth/adapters";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
@@ -23,26 +24,96 @@ export const getCurrentUser = (req: NextRequest) => {
     return null;
   }
 }
-
 const prismaAdapter = PrismaAdapter(prisma);
 
-export const authOptions: NextAuthOptions = {
-  adapter: {
-    ...prismaAdapter,
-    createUser: (data: any) => {
-      return prisma.user.create({
-        data: {
-          email: data.email,
-          emailVerified: data.emailVerified,
-          image: data.image,                          // add image to your schema too (below)
-          user_name: data.name ?? data.email.split("@")[0],
-          isVerified: true,
-          isUserAllowed: true,
-        }
-      })
-    }
+const toAdapterUser = (user: any): AdapterUser => ({
+  ...user,
+  id: String(user.id),
+});
+
+const adapter = {
+  ...prismaAdapter,
+
+  async createUser(data: any) {
+    const user = await prisma.user.create({
+      data: {
+        email: data.email,
+        emailVerified: data.emailVerified,
+        image: data.image,
+        user_name: data.name ?? data.email?.split("@")[0],
+        isVerified: true,
+        isUserAllowed: true,
+      },
+    });
+    return toAdapterUser(user);
   },
 
+  async getUser(id: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+    });
+    return user ? toAdapterUser(user) : null;
+  },
+
+  async updateUser(user: any) {
+    const { id, ...data } = user;
+    const updated = await prisma.user.update({
+      where: { id: Number(id) },
+      data,
+    });
+    return toAdapterUser(updated);
+  },
+
+  async deleteUser(id: string) {
+    const user = await prisma.user.delete({
+      where: { id: Number(id) },
+    });
+    return toAdapterUser(user);
+  },
+
+  async linkAccount(data: any) {
+    return prismaAdapter.linkAccount!({
+      ...data,
+      userId: Number(data.userId),
+    }) as any;
+  },
+
+  async getUserByAccount(providerAccountId: any) {
+    const account = await prisma.account.findUnique({
+      where: { provider_providerAccountId: providerAccountId },
+      include: { user: true },
+    });
+    return account?.user ? toAdapterUser(account.user) : null;
+  },
+
+  async getSessionAndUser(sessionToken: string) {
+    const result = await prisma.session.findUnique({
+      where: { sessionToken },
+      include: { user: true },
+    });
+    if (!result) return null;
+    const { user, ...session } = result;
+    return {
+      session: { ...session, userId: String(session.userId) },
+      user: toAdapterUser(user),
+    };
+  },
+
+  async createSession(data: any) {
+    const session = await prisma.session.create({
+      data: { ...data, userId: Number(data.userId) },
+    });
+    return { ...session, userId: String(session.userId) };
+  },
+
+  async updateSession(data: any) {
+    const session = await prismaAdapter.updateSession!(data);
+    return session ? { ...session, userId: String(session.userId) } : null;
+  },
+};
+
+export const authOptions: NextAuthOptions = {
+  adapter: adapter,
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!,
@@ -71,9 +142,15 @@ export const authOptions: NextAuthOptions = {
         if (!user.isVerified) throw new Error("Account is not verified");
         if (!user.isUserAllowed) throw new Error("Account is blocked");
 
+        if (!user.password) {
+          throw new Error(
+            "This account was created using Google/GitHub Sign In"
+          );
+        }
+
         const isMatch = await bcrypt.compare(
           credentials.password,
-          user?.password || ""
+          user.password
         );
 
         if (!isMatch) throw new Error("Invalid Credentials");
@@ -95,15 +172,16 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = String(user.id);
         token.role = user.role;
       }
+
       return token;
     },
 
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub ?? token.id as string;
+        session.user.id = String(token.id);
         session.user.role = token.role;
       }
       return session;
@@ -118,4 +196,4 @@ export const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-};
+}

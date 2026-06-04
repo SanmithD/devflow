@@ -71,9 +71,9 @@ export default function DashboardPage({ user }: { user: UserType | null }) {
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  if (!user) {
-    return <div>No user found</div>;
-  }
+  // if (!user) {
+  //   return <Login/>;
+  // }
 
   return (
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">

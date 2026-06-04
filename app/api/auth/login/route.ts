@@ -24,15 +24,22 @@ export const POST = async (req: NextRequest) => {
             return NextResponse.json({ message: 'User does not exists' }, { status: 404 });
         }
 
-         if (!user.isVerified) {
+        if (!user.isVerified) {
             return NextResponse.json({ message: 'Please verify your email' }, { status: 403 });
         }
 
-         if (!user.isUserAllowed) {
+        if (!user.isUserAllowed) {
             return NextResponse.json({ message: 'Account is blocked' }, { status: 403 });
         }
 
         console.log('email and pass', email, "and ", password, 'user', user.password);
+
+        if (!user.password) {
+            return NextResponse.json(
+                { message: "Account uses Google Sign In" },
+                { status: 400 }
+            );
+        }
 
         const isMatch = await bcrypt.compare(password, user.password)
 
@@ -60,6 +67,6 @@ export const POST = async (req: NextRequest) => {
         return response;
     } catch (error) {
         console.log('error', error);
-        return NextResponse.json({ message: 'Internal Server error' },{ status: 500 });
+        return NextResponse.json({ message: 'Internal Server error' }, { status: 500 });
     }
 }
