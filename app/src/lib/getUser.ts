@@ -6,15 +6,11 @@ export const getUser = async () => {
     try {
         const session = await getServerSession(authOptions);
 
-        if (!session) throw new Error("Session not found");
+        if (!session) return null;
 
-        const user_id = session.user.id;
-
-        if (!user_id) throw new Error("Invalid ID");
-
-        const user = await prisma.user.findUnique({
+        return await prisma.user.findUnique({
             where: {
-                id: Number(user_id),
+                id: Number(session.user.id),
             },
             select: {
                 id: true,
@@ -26,12 +22,10 @@ export const getUser = async () => {
                 isUserAllowed: true,
                 subscription_plan: true,
                 createdAt: true,
-                ipAddress: true,
                 emailVerified: true,
             },
         });
 
-        return user;
     } catch (error) {
         console.log("server error", error);
         throw new Error("Server error");

@@ -1,4 +1,4 @@
-type VectorItem = {
+export type VectorItem = {
     id: string;
     embedding: number[];
     text: string;
@@ -11,6 +11,8 @@ class VectorStore {
 
     add(item: VectorItem) {
         this.store.push(item);
+
+        console.log("STORE SIZE AFTER ADD", this.store.length);
     }
 
     private cosine(a: number[], b: number[]) {
@@ -42,6 +44,8 @@ class VectorStore {
         const { topK = 5, projectId, minScore = 0 } = options || {};
 
         let results = this.store;
+
+        console.log("STORE SIZE DURING SEARCH", this.store.length);
 
         // ✅ filter by project
         if (projectId !== undefined) {

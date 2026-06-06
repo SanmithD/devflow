@@ -32,7 +32,7 @@ export const uploadFiles = async (req: NextRequest) => {
 
         const uploadRepo = new UploadRepository();
 
-        console.log('file in controller', JSON.stringify(file));
+        console.log('file in controller', file);
         
         const meta_data = await uploadRepo.uploadMediaFiles(file, projectId);
 

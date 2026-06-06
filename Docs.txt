@@ -219,14 +219,15 @@ That architecture is modern, scalable, and recruiter-friendly.
 Media Uploads
 1. Text ✔️
 2. Docx ✔️
-3. Pdf
+3. Pdf ✔️
 4. Excel ✔️
 5. PPTX ✔️
 6. JSON ✔️
 
-* User profile
+* User profile ✔️
 * Subscription ( Stripe )
 * Tokenization (tokenziation)
 * Canvas
 * Image reading
 * Start Dummy Response 
+* Contact 

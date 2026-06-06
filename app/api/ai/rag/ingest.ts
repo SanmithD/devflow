@@ -1,25 +1,42 @@
+import { pineconeIndex } from "@/app/src/lib/pinecone";
 import { randomUUID } from "crypto";
 import { chunkText } from "./chunk";
 import { createEmbedder } from "./embedding";
-import { vectorStore } from "./vector_store";
 
-export const ingest = async(text: string, projectId?: number, filename?: string) => {
-
-    if (!text) throw new Error("Empty text");
+export const ingest = async (
+    text: string,
+    projectId?: number,
+    filename?: string
+) => {
+    if (!text?.trim()) {
+        throw new Error("Empty text");
+    }
 
     const chunks = chunkText(text, 500, 100);
 
-    for(let i=0; i < chunks.length; i++){
-        const chunk = chunks[i];
+    console.log(
+        `📄 Ingesting ${chunks.length} chunks for project ${projectId}`
+    );
 
-        const embedding = await createEmbedder(chunk) as number[];
+    const vectors = [];
 
-        vectorStore.add({
-            id: randomUUID(), // no collisions
-            embedding,
-            text: chunk,
-            projectId: Number(projectId),
-            source: filename
-        })
+    for (const chunk of chunks) {
+        const embedding = await createEmbedder(chunk);
+
+        vectors.push({
+            id: randomUUID(),
+            values: embedding as number[],
+            metadata: {
+                text: chunk,
+                projectId: Number(projectId),
+                source: filename ?? "",
+            },
+        });
     }
-}
+
+    await pineconeIndex.upsert({
+        records: vectors,
+    });
+
+    console.log(`✅ Stored ${vectors.length} vectors`);
+};

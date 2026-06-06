@@ -16,11 +16,15 @@ function Navbar({ user }: { user: UserType | null }) {
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setProfileVisible(false);
       }
     };
-    if (profileVisible) document.addEventListener("mousedown", handleClickOutside);
+    if (profileVisible)
+      document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [profileVisible]);
 
@@ -31,7 +35,12 @@ function Navbar({ user }: { user: UserType | null }) {
         onClick={() => router.push("/dashboard")}
         className="relative h-10 w-[20%] md:h-15 flex justify-start overflow-hidden cursor-pointer"
       >
-        <Image src="/devflow-logo.png" alt="logo" fill className="object-contain" />
+        <Image
+          src="/devflow-logo.png"
+          alt="logo"
+          fill
+          className="object-contain"
+        />
       </div>
 
       {/* Right side */}
@@ -47,17 +56,21 @@ function Navbar({ user }: { user: UserType | null }) {
         <div className="relative" ref={dropdownRef}>
           <div
             className="
-              w-8 h-8 md:w-10 md:h-10
-              rounded-full overflow-hidden
-              border border-gray-700
-              flex items-center justify-center
-              cursor-pointer
-              hover:border-emerald-400 hover:border-2
-            "
+    relative
+    w-8 h-8 md:w-10 md:h-10
+    rounded-full overflow-hidden
+    border border-gray-700
+    flex items-center justify-center
+  "
             onClick={() => setProfileVisible(!profileVisible)}
           >
             {user?.image ? (
-              <Image src={user.image} alt="profile" fill className="object-cover" />
+              <Image
+                src={user.image}
+                alt="profile"
+                fill
+                className="object-cover"
+              />
             ) : (
               <User2Icon size={20} />
             )}

@@ -1,17 +1,26 @@
+import { pineconeIndex } from "@/app/src/lib/pinecone";
 import { createEmbedder } from "./embedding";
-import { vectorStore } from "./vector_store";
 
 export const retrive = async (
     query: string,
     session_id: string
 ) => {
-    const queryEmbedding = (await createEmbedder(query)) as number[];
+    const queryEmbedding = await createEmbedder(query);
 
-    const results = vectorStore.search(queryEmbedding, {
+    const result = await pineconeIndex.query({
+        vector: queryEmbedding as number[],
         topK: 5,
-        projectId: Number(session_id),
-        minScore: 0.6
+        includeMetadata: true,
+        filter: {
+            projectId: Number(session_id),
+        },
     });
 
-    return results.filter(r => r.score > 0.7); // return full objects more then 0.7 confidence
+    return result.matches.map((match) => ({
+        id: match.id,
+        score: match.score,
+        text: match.metadata?.text as string,
+        projectId: match.metadata?.projectId as number,
+        source: match.metadata?.source as string,
+    }));
 };

@@ -27,29 +27,32 @@ model Account {
 }
 
 model User {
-  id                Int          @id @default(autoincrement())
-  email             String       @unique
-  password          String?
-  user_name         String?
-  emailVerified     DateTime? // ← add this (NextAuth needs it)
-  image             String?
-  role              String       @default("user")
-  isUserAllowed     Boolean      @default(true)
-  isVerified        Boolean      @default(true)
-  ipAddress         String?
-  subscription_plan String?
-  createdAt         DateTime     @default(now())
-  projects          Project[]
-  accounts          Account[]
-  sessions          Session[]
-  ailogs            AILog[]
-  userUsages        UserUsage[]
-  mailRecords       MailRecord[]
-  auditTrials       AuditTrial[]
-  archives          Archive[]
-  bookmarks         Bookmark[]
-  agentAudits       AgentAudit[]
-  chatMedias        ChatMedia[]
+  id               Int           @id @default(autoincrement())
+  email            String        @unique
+  password         String?
+  user_name        String?
+  emailVerified    DateTime? // ← add this (NextAuth needs it)
+  image            String?
+  role             String        @default("user")
+  isUserAllowed    Boolean       @default(true)
+  isVerified       Boolean       @default(true)
+  ipAddress        String?
+  subscriptionPlan PlanType      @default(FREE)
+  subscription     Subscription?
+  createdAt        DateTime      @default(now())
+  projects         Project[]
+  accounts         Account[]
+  sessions         Session[]
+  ailogs           AILog[]
+  userUsages       UserUsage[]
+  mailRecords      MailRecord[]
+  auditTrials      AuditTrial[]
+  archives         Archive[]
+  bookmarks        Bookmark[]
+  agentAudits      AgentAudit[]
+  chatMedias       ChatMedia[]
+  payments         Payment[]
+  tokenUsages      TokenUsage[]
 
   @@index([id, email])
 }
@@ -75,6 +78,9 @@ model TokenUsage {
   outputTokens Int
   totalTokens  Int
   createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, id])
 }
 
 model Project {
@@ -205,6 +211,61 @@ model ChatMedia {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([id, userId, chatId])
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  CREATED
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  CREATED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+model Subscription {
+  id                     Int                @id @default(autoincrement())
+  userId                 Int                @unique
+  plan                   PlanType           @default(FREE)
+  status                 SubscriptionStatus
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?
+  razorpayPaymentId      String?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id])
+
+  @@index([userId, id, status])
+}
+
+model Payment {
+  id                     Int           @id @default(autoincrement())
+  userId                 Int
+  amount                 Int
+  currency               String        @default("INR")
+  razorpayPaymentId      String?
+  razorpayOrderId        String?
+  razorpaySubscriptionId String?
+  status                 PaymentStatus
+  createdAt              DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, id, status])
 }
 
 // npx prisma migrate dev --name add_user_model
