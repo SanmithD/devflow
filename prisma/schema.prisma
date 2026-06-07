@@ -240,7 +240,7 @@ model Subscription {
   plan                   PlanType           @default(FREE)
   status                 SubscriptionStatus
   razorpayCustomerId     String?
-  razorpaySubscriptionId String?
+  razorpaySubscriptionId String? @unique
   razorpayPaymentId      String?
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
@@ -266,6 +266,13 @@ model Payment {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, id, status])
+}
+
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  event       String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
 }
 
 // npx prisma migrate dev --name add_user_model

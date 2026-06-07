@@ -225,7 +225,7 @@ Media Uploads
 6. JSON ✔️
 
 * User profile ✔️
-* Subscription ( Stripe )
+* Subscription ( RazorPay )
 * Tokenization (tokenziation)
 * Canvas
 * Image reading

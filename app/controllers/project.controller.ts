@@ -28,6 +28,13 @@ export const agentChat = async (req: NextRequest) => {
             req.headers.get("x-real-ip") ||
             "unknown";
 
+        // TODO
+        // const plan = await getUserPlan({ userId: Number(userId) });
+
+        // if(plan === "FREE"){
+
+        // }
+
         let currentProjectId = projectId;
 
         const chatRepo = new AgentChatRepository();

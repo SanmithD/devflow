@@ -2,13 +2,13 @@
 
 import { UserType } from "@/app/src/types/profile.type";
 import {
-    AlertCircle,
-    Calendar,
-    Camera,
-    CheckCircle,
-    Crown,
-    Mail,
-    User,
+  AlertCircle,
+  Calendar,
+  Camera,
+  CheckCircle,
+  Crown,
+  Mail,
+  User,
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
@@ -40,9 +40,9 @@ export default function ProfileCard({ user }: { user: UserType | null }) {
     setEditMode(false);
   };
 
-  const plan = user?.subscription_plan
-    ? user.subscription_plan.charAt(0).toUpperCase() +
-      user.subscription_plan.slice(1)
+  const plan = user?.subscriptionPlan
+    ? user.subscriptionPlan.charAt(0).toUpperCase() +
+      user.subscriptionPlan.slice(1)
     : "Free";
 
   if (!user) return <p>not found</p>;

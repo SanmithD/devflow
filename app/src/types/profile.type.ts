@@ -9,5 +9,5 @@ export interface UserType {
     user_name?: string | null;
     emailVerified: boolean | null | Date;
     image?: string | null;
-    subscription_plan?: string | null;
+    subscriptionPlan?: string | null;
 }

@@ -10,10 +10,10 @@ export class ProfileRepository {
             user_name: user.user_name,
             image: user.image,
             emailVerified: user.emailVerified,
-            ipAddress: user.ipAddress,
+            // ipAddress: user.ipAddress,
             isUserAllowed: user.isUserAllowed,
             isVerified: user.isVerified,
-            subscription_plan: user.subscription_plan,
+            subscriptionPlan: user.subscriptionPlan,
             role: user.role,
             createdAt: user.createdAt,
         }

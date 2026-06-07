@@ -1,5 +1,4 @@
 import { getCurrentUser } from "@/app/src/lib/auth";
-import { handleErrors } from "@/app/src/lib/error";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = async(req: NextRequest) => {
@@ -14,6 +13,6 @@ export const GET = async(req: NextRequest) => {
         return NextResponse.json({ message: 'Authorized access', user },{ status: 200 });
     } catch (error) {
         console.log(error);
-        return handleErrors(error);
+        return  NextResponse.json({ message: 'Internal Server Error' },{ status: 500 });
     }
 }
