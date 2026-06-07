@@ -2,9 +2,10 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { ArchiveRepository } from "../repository/archive.repository";
 import { authOptions } from "../src/lib/auth";
+import { redis } from "../src/lib/redis";
 
 export const insertArchive = async (req: NextRequest) => {
-    try { 
+    try {
         const session = await getServerSession(authOptions);
 
         if (!session) {
@@ -29,6 +30,8 @@ export const insertArchive = async (req: NextRequest) => {
             req.headers.get("x-forwarded-for")?.split(",")[0] ||
             req.headers.get("x-real-ip") ||
             "unknown";
+
+        await redis.del(`archive:${userId}:*`);
 
         const archiveRepo = new ArchiveRepository();
 
@@ -46,7 +49,7 @@ export const insertArchive = async (req: NextRequest) => {
     }
 }
 
-export const getAllArchive = async(req: NextRequest) => {
+export const getAllArchive = async (req: NextRequest) => {
     try {
         const session = await getServerSession(authOptions);
 
@@ -63,6 +66,13 @@ export const getAllArchive = async(req: NextRequest) => {
 
         const { limit } = body;
 
+        const cacheKey = `archive:${userId}:${limit}`;
+        const cached = await redis.get<typeof response>(cacheKey);
+
+        if (cached) {
+            return NextResponse.json(cached);
+        }
+
         const archiveRepo = new ArchiveRepository();
         const response = await archiveRepo.findArchive({ userId: Number(userId), limit });
 
@@ -71,6 +81,9 @@ export const getAllArchive = async(req: NextRequest) => {
         }
 
         const nextCursor = response?.data?.length === limit ? response?.data?.[0].id : null;
+
+        await redis.set(cacheKey, response, { ex: 60 });
+
 
         return NextResponse.json({ messages: response.data, nextCursor, hasMore: !!nextCursor }, { status: 200 });
 
@@ -81,7 +94,7 @@ export const getAllArchive = async(req: NextRequest) => {
 }
 
 export const updateArchive = async (req: NextRequest) => {
-    try { 
+    try {
         const session = await getServerSession(authOptions);
 
         if (!session) {
@@ -98,8 +111,7 @@ export const updateArchive = async (req: NextRequest) => {
 
         const id = Number(body.id);
         const title = body.title;
-
-        console.log('id', id, 'title', title, 'userId', userId);
+        const status = body.status;
 
         if (!id || typeof id !== 'number' || id <= 0) {
             return NextResponse.json({ message: 'Invalid id' }, { status: 400 })
@@ -110,9 +122,17 @@ export const updateArchive = async (req: NextRequest) => {
             req.headers.get("x-real-ip") ||
             "unknown";
 
+        await redis.del(`archive:${userId}:*`);
+
+
         const archiveRepo = new ArchiveRepository();
 
-        const response = await archiveRepo.updateArchive({ id, userId: Number(userId), title, ip });
+        const response = await archiveRepo.updateArchive({
+            id, userId: Number(userId), updateArchiveArgs: {
+                title,
+                status
+            }, ip
+        });
 
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })
@@ -134,7 +154,7 @@ export const deleteArchive = async (req: NextRequest, id: number) => {
             return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
         }
 
-        const userId = session.user.id; 
+        const userId = session.user.id;
 
         if (!id || typeof id !== 'number' || id <= 0) {
             return NextResponse.json({ message: 'Invalid id' }, { status: 400 })
@@ -152,6 +172,46 @@ export const deleteArchive = async (req: NextRequest, id: number) => {
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })
         }
+
+        await redis.del(`archive:${userId}:*`);
+
+
+        return NextResponse.json({ message: response.message }, { status: 200 });
+
+    } catch (error) {
+        console.log('server error', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export const deleteAllArchive = async (req: NextRequest) => {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session) {
+            return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
+        }
+
+        const userId = session.user.id;
+
+        if (!userId) {
+            return NextResponse.json({ message: 'User not found' }, { status: 403 });
+        }
+
+        const ip =
+            req.headers.get("x-forwarded-for")?.split(",")[0] ||
+            req.headers.get("x-real-ip") ||
+            "unknown";
+
+        const historyRepo = new ArchiveRepository();
+
+        const response = await historyRepo.deleteAllSavedArchive({ userId: Number(userId), ip });
+
+        if (!response.success) {
+            return NextResponse.json({ message: response.message }, { status: 400 })
+        }
+
+        await redis.del(`archive:${userId}:*`);
 
         return NextResponse.json({ message: response.message }, { status: 200 });
 

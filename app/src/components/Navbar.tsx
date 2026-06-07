@@ -1,59 +1,87 @@
 "use client";
 
-import { LogoutButton } from "@/app/auth/logout/page";
+import LogoutButton from "@/app/auth/logout/page";
 import { Bell, User2Icon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { UserType } from "../types/profile.type";
+import ProfileCard from "./project-deatils/components/ProfileCard";
 
-function Navbar() {
-
+function Navbar({ user }: { user: UserType | null }) {
   const router = useRouter();
+  const [profileVisible, setProfileVisible] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setProfileVisible(false);
+      }
+    };
+    if (profileVisible)
+      document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [profileVisible]);
 
   return (
-    <div className="flex justify-between items-center border-b px-2 md:px-4">
-      {/* logo */}
-      <div onClick={()=>router.push('/dashboard')} className="relative h-10 w-[20%] md:h-15 flex justify-start overflow-hidden">
-        {/* Image */}
+    <div className="flex justify-between items-center border-b border-b-gray-800 px-2 md:px-4">
+      {/* Logo */}
+      <div
+        onClick={() => router.push("/dashboard")}
+        className="relative h-10 w-[20%] md:h-15 flex justify-start overflow-hidden cursor-pointer"
+      >
         <Image
           src="/devflow-logo.png"
           alt="logo"
           fill
-          className="object-contain cursor-pointer hover:drop-shadow-[0_0_20px_rgba(59,130,246,0.8)]"
+          className="object-contain"
         />
-
-        {/* Shine */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="shine absolute top-0 left-[-100%] h-full w-1 bg-gradient-to-r from-transparent via-blue-800/40 to-transparent"></div>
-        </div>
-
-        {/* Local CSS */}
-        <style jsx>{`
-          .shine {
-            animation: shineMove 5s linear infinite;
-          }
-
-          @keyframes shineMove {
-            0% {
-              left: -100%;
-            }
-            100% {
-              left: 100%;
-            }
-          }
-        `}</style>
       </div>
-      {/* right side */}
-      <div className="flex justify-between items-center w-[10%]" >
-        {/* notification */}
+
+      {/* Right side */}
+      <div className="flex justify-between items-center w-[15%]">
         <div>
           <Bell size={30} />
         </div>
         <div>
-          <LogoutButton/>
+          <LogoutButton />
         </div>
-        {/* profile */}
-        <div>
-          <User2Icon size={30} />
+
+        {/* Profile avatar + dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <div
+            className="
+    relative
+    w-8 h-8 md:w-10 md:h-10
+    rounded-full overflow-hidden
+    border border-gray-700
+    flex items-center justify-center
+  "
+            onClick={() => setProfileVisible(!profileVisible)}
+          >
+            {user?.image ? (
+              <Image
+                src={user.image}
+                alt="profile"
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <User2Icon size={20} />
+            )}
+          </div>
+
+          {/* Dropdown */}
+          {profileVisible && (
+            <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-white/10 bg-[#0f0f0f] shadow-2xl">
+              <ProfileCard user={user} />
+            </div>
+          )}
         </div>
       </div>
     </div>

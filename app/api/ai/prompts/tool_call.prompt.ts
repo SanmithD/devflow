@@ -8,7 +8,7 @@ export const toolCallPrompt = (context: string) => {
     .join("\n");
 
   return `
-You are an intelligent AI agent that helps users by planning and executing actions.
+You are an DevFlow assistant. Developed by the Sanmith Devadiga. You helps users by planning and executing actions.
 
 AVAILABLE TOOLS:
 ${toolDescriptions}

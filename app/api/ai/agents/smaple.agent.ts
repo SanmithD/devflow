@@ -1,125 +1,125 @@
+import { MediaMetadata } from "@/app/src/types/chat.type";
 import { addSession, getSession } from "../memory/session.memory";
-import { retrive } from "../rag/retrive";
 import "../tools";
-import { generateFinalResponse } from "../utils/final_decision.util";
-import { plannerTextGenerator, synthesizerGenerator } from "../utils/planner_response.util";
+import { createAgentAuditLog } from "../utils/agent_audit.util";
 import { createTextStream } from "../utils/text_stream.util";
-import { generateToolResponse } from "../utils/tool_decision.util";
-import { AgentDecisionSchema } from "./schema.agent";
+import { runDirectResponse } from "./direct_response.agent";
+import { runPlanner } from "./planner.agent";
+import { runReasoner } from "./reasoner.agent";
+import { runToolExecution } from "./tool_execution.agent.ts";
+import { runValidatorSynthesizer } from "./validator_synthesizer.agent";
 
 export const runAgent = async (
     userInput: string,
     session_id: string,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    media_metadata: MediaMetadata
 ) => {
     try {
         const history = getSession(session_id);
         console.log('history', history);
 
         history.push({ role: "user", content: userInput });
-        
-        // Fetch context ONCE — reused by both planner and final answer
-        const context = await retrive(userInput);
-        
+
+        // Fetch context ONCE — reused by both planner
+        const resonerRes = await runReasoner({
+            userInput,
+            session_id,
+            abortSignal,
+            media_metadata
+        });
+
+        if (!resonerRes) throw new Error('Fail to reason');
+
+        await createAgentAuditLog({
+            input: userInput,
+            model: 'Reasoner',
+            response: resonerRes?.enrichedInput
+        });
+
         let toolResults = "";
 
         for (let i = 0; i < 5; i++) {
             if (abortSignal.aborted) return createTextStream("Generation Stopped");
 
             console.log(`\n🔄 Agent iteration ${i + 1}`);
-            // ── SYNTHESIZER: runs only after a tool has been called ──────────
-            if (toolResults) {
-                console.log("Synthesizing final answer from tool results...");
 
-                const result = await synthesizerGenerator({
-                    toolResults,
-                    abortSignal,
-                    session_id
-                });
-
-                if (!result) {
-                    throw new Error("Planner failed");
-                }
-
-                const { reader, decoder } = result.data;
-
-                let finalAnswer = "";
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    finalAnswer += decoder.decode(value, { stream: true });
-                }
-                addSession(session_id, { role: "assistant", content: finalAnswer });
-                return createTextStream(finalAnswer, abortSignal);
-            }
-            // ── PLANNER: decides "final" or "tool" ──────────────────────────
-            console.log("🗺️ Running planner...");
-
-            const result = await plannerTextGenerator({
-                userInput,
-                context,
-                abortSignal,
-                session_id
+            const decision = await runPlanner({
+                userInput: resonerRes?.enrichedInput,
+                session_id,
+                context: resonerRes?.context,
+                abortSignal
             });
 
-            if (!result) {
-                throw new Error("Planner failed");
-            }
+            if (!decision) throw new Error('Fail to create plan');
 
-            const { plannerReader, plannerDecoder } = result.data;
+            await createAgentAuditLog({
+                input: decision.input || '',
+                model: 'Planner',
+                response: decision.action
+            });
 
-            let responseText = "";
-            while (true) {
-                const { done, value } = await plannerReader.read();
-                if (done) break;
-                responseText += plannerDecoder.decode(value, { stream: true });
-            }
-            console.log("🤖 Planner raw response:", responseText);
+            // tool path
+            if (decision.action === 'tool' && decision.tool) {
 
-            // ── PARSE planner decision ───────────────────────────────────────
-            let decision;
-            try {
-                const cleaned = responseText
-                    .replace(/```json\n?/g, "")
-                    .replace(/```\n?/g, "")
-                    .trim();
-
-                const parsed = JSON.parse(cleaned);
-
-                decision = AgentDecisionSchema.parse(parsed);
-                console.log("📋 Decision:", decision);
-
-            } catch (parseError) {
-                console.error("❌ Failed to parse planner decision:", parseError);
-                // Planner returned something unparseable — stream it as-is
-                addSession(session_id, { role: "assistant", content: responseText });
-                return createTextStream(responseText, abortSignal);
-            }
-
-            // ── FINAL: pass user query + context to the ReAct agent ─────────
-            if (decision.action === "final") {
-                if (abortSignal.aborted) return createTextStream("Generation stopped");
-                return await generateFinalResponse({
-                    session_id,
-                    context,
-                    userInput,
-                    abortSignal
-                })
-            }
-            // ── TOOL: delegate to ReAct agent with tool-use enabled ──────────
-            if (decision.action === "tool") {
-                if (abortSignal.aborted) return createTextStream("Generation stopped");
-
-                toolResults += await generateToolResponse({
+                const rawResult = await runToolExecution({
+                    input: String(decision.input ?? resonerRes?.enrichedInput),
                     session_id,
                     tool: decision.tool,
-                    userInput,
                     abortSignal
                 });
 
+                await createAgentAuditLog({
+                    input: String(decision.input ?? resonerRes?.enrichedInput),
+                    model: 'Tool Executor',
+                    response: rawResult
+                });
+
+                // validator
+                const synthesized = await runValidatorSynthesizer({
+                    toolResults: toolResults + rawResult,
+                    session_id,
+                    abortSignal
+                });
+
+                if (synthesized) {
+                    addSession(session_id, {
+                        role: 'assistant',
+                        content: synthesized
+                    });
+
+                    await createAgentAuditLog({
+                        input: toolResults + rawResult,
+                        model: 'Synthesizer',
+                        response: synthesized
+                    });
+
+                    return createTextStream(synthesized, abortSignal);
+                }
+
+                toolResults += rawResult;
                 continue;
             }
+
+            // Direct answer path
+            if (decision.action === 'final') {
+                const res = await runDirectResponse({
+                    session_id,
+                    context: resonerRes?.context,
+                    userInput: resonerRes?.enrichedInput,
+                    abortSignal,
+                });
+
+                await createAgentAuditLog({
+                    input: resonerRes?.enrichedInput,
+                    model: 'Direct Response',
+                    response: String(res)
+                });
+
+                return res;
+            }
         }
+
         return createTextStream("Agent stopped at max iterations");
     } catch (error) {
         if ((error as Error).name === "AbortError") return createTextStream("");

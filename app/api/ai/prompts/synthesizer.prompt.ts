@@ -6,6 +6,8 @@ TOOL RESULTS:
 ${toolResults}
 
 RULES:
+- Use Emojies if anywhere needed or user aksed.
+- To Describe emotions use Emojies.
 - Write a helpful, accurate answer in markdown.
 - Do NOT call any tools.
 - Do NOT output JSON.

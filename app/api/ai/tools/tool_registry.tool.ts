@@ -1,3 +1,8 @@
+type Tool = {
+    name: string;
+    description: string;
+    func: (input: string) => Promise<string>;
+}
 
 export class ToolRegistry {
     private tools: Map<string, Tool> = new Map();

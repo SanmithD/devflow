@@ -19,8 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["./*"],
+      "@/hooks/*": ["./src/hooks/*"]
+    },
+    // "noImplicitAny": false,
   },
   "include": [
     "next-env.d.ts",

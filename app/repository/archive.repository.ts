@@ -17,22 +17,57 @@ export class ArchiveRepository {
                 where: { id, userId, status: 1 }
             });
 
-            if (!isProjectExists) {
-                return {
-                    success: false,
-                    message: 'Project not found',
-                }
-            }
+            let isProjectExistsInBookmark;
+            let moveToArchive;
 
-            // create archive document
-            const moveToArchive = await prisma.archive.create({
-                data: {
-                    userId,
-                    title: isProjectExists?.title,
-                    status: 1,
-                    projectId: id
+            if (!isProjectExists) {
+                isProjectExistsInBookmark = await prisma.bookmark.findFirst({
+                    where: { id, userId }
+                });
+
+                if (!isProjectExistsInBookmark) {
+                    return {
+                        success: false,
+                        message: 'Project not found',
+                    }
                 }
-            });
+
+                moveToArchive = await prisma.archive.create({
+                    data: {
+                        userId,
+                        title: isProjectExistsInBookmark?.title,
+                        projectId: isProjectExistsInBookmark?.projectId,
+                        status: 1
+                    }
+                });
+
+                // update project status
+                await prisma.project.update({
+                    where: { id: isProjectExistsInBookmark.projectId },
+                    data: {
+                        status: 2 // archived
+                    }
+                });
+
+            } else {
+                // create archive document
+                moveToArchive = await prisma.archive.create({
+                    data: {
+                        userId,
+                        title: isProjectExists?.title,
+                        projectId: id,
+                        status: 1
+                    }
+                });
+
+                // update project status
+                await prisma.project.update({
+                    where: { id },
+                    data: {
+                        status: 2 // archived
+                    }
+                });
+            }
 
             if (!moveToArchive) {
                 return {
@@ -40,14 +75,6 @@ export class ArchiveRepository {
                     message: 'Fail to move archive',
                 }
             }
-
-            // update project status
-            await prisma.project.update({
-                where: { id },
-                data: {
-                    status: 2 // archived
-                }
-            });
 
             // create audit trail
             await prisma.auditTrial.create({
@@ -73,7 +100,7 @@ export class ArchiveRepository {
         }
     }
 
-    findArchive = async ({ userId, limit }: { userId: number; limit: number }) => {
+    findArchive = async ({ userId, limit = 20 }: { userId: number; limit: number }) => {
         try {
 
             if (!limit || !userId) {
@@ -118,30 +145,19 @@ export class ArchiveRepository {
         }
     }
 
-    updateArchive = async ({ id, userId, title, ip }: { id: number; userId: number; title: string; ip: string }) => {
+    updateArchive = async ({ id, userId, ip, updateArchiveArgs }: { id: number; userId: number; updateArchiveArgs: any; ip: string;}) => {
         try {
 
-            if (!id || !userId || !title) {
+            if (!id || !userId) {
                 return {
                     success: false,
-                    message: 'Id, Title and userId is required',
+                    message: 'Id and userId is required',
                 }
-            }
-
-            const project = await prisma.archive.findFirst({
-                where: { id, userId, status: 1 }
-            });
-
-            if (!project) {
-                return {
-                    success: false,
-                    message: 'Project not found or unauthorized'
-                };
             }
 
             const res = await prisma.archive.update({
                 where: { id },
-                data: { title }
+                data: { ...updateArchiveArgs }
             });
 
             if (!res) {
@@ -149,6 +165,14 @@ export class ArchiveRepository {
                     success: false,
                     message: 'Project not found'
                 }
+            }
+
+            // if status is 2 Inactive
+            if (updateArchiveArgs?.status === 2) {
+                await prisma.project.update({
+                    where: { id: res?.projectId, userId },
+                    data: { status: 1 }
+                })
             }
 
             // create audit trial
@@ -207,6 +231,49 @@ export class ArchiveRepository {
             return {
                 success: true,
                 message: 'Project deleted'
+            }
+        } catch (error) {
+            console.log('Server error', error);
+            return {
+                success: false,
+                message: 'Internal Server error',
+            }
+        }
+    }
+
+    deleteAllSavedArchive = async ({ userId, ip }: { userId: number; ip: string }) => {
+        try {
+
+            if (!userId) {
+                return {
+                    success: false,
+                    message: 'userId is required',
+                }
+            }
+
+            const res = await prisma.archive.deleteMany({
+                where: { userId }
+            });
+
+            if (!res) {
+                return {
+                    success: false,
+                    message: 'Project not found'
+                }
+            }
+
+            await prisma.auditTrial.create({
+                data: {
+                    userId,
+                    action: 'delete all',
+                    table: 'archive',
+                    ipAddress: ip
+                }
+            });
+
+            return {
+                success: true,
+                message: 'All Archive Project deleted'
             }
         } catch (error) {
             console.log('Server error', error);

@@ -101,7 +101,7 @@ function ActionMenu({
     setOpenId(null);
     try {
       // FIX 3: bookmark is likely a POST/PUT, not DELETE — adjust to your API
-      await axios.post(`/api/projects/bookmark/${itemId}`);
+      await axios.post(`/api/projects/bookmark/${itemId}`,{ id: itemId });
       toast.success("Bookmarked");
     } catch (error) {
       console.error("bookmark error", error);
@@ -113,13 +113,13 @@ function ActionMenu({
     setOpenId(null);
     try {
       // FIX 4: archive is likely a POST/PUT, not DELETE — adjust to your API
-      await axios.post(`/api/projects/archive`, { id: itemId });
+      await axios.post(`/api/projects/archive/${itemId}`, { id: itemId });
       toast.success("Archived");
       queryClient.invalidateQueries({ queryKey: ["history"] });
     } catch (error) {
       console.error("archive error", error);
       toast.error("Failed to archive");
-    }
+    } 
   };
 
   const actions = [
@@ -309,7 +309,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   const [isDeleteLoading, setIsDeleteLoading] = useState<boolean>(false);
 
   const fetchHistory = async ({
-    pageParam = 40,
+    pageParam = 20,
   }: {
     pageParam: number;
   }): Promise<HistoryPage> => {
@@ -327,10 +327,10 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   } = useInfiniteQuery({
     queryKey: ["history"],
     queryFn: fetchHistory,
-    initialPageParam: 40,
+    initialPageParam: 20,
     getNextPageParam: (lastPage, pages) => {
       if (!lastPage.hasMore) return undefined;
-      return pages.length * 40 + 40;
+      return pages.length * 20 + 20;
     },
     enabled: isActive,
   });
@@ -367,7 +367,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
       toast.success("Deleted");
 
       setIsModelOpen(false);
-      await fetchHistory({ pageParam: 40 });
+      await fetchHistory({ pageParam: 20 });
     } catch (error) {
       console.error("archive error", error);
       toast.error("Failed to archive");
@@ -377,7 +377,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden no-scrollbar">
+    <div className="h-full flex flex-col custom-scroll">
       <div>
         <button
           className="cursor-pointer hover:text-red-500 "
@@ -386,7 +386,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
           <TrashIcon size={18} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto no-scrollbar overscroll-contain px-2 py-2 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+      <div className="flex-1 custom-scroll overscroll-contain px-2 py-2 space-y-0.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
         {isLoading ? (
           <div className="space-y-0.5">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -404,7 +404,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
           <>
             {history.map((item) => (
               <div
-                key={item.id}
+                key={item?.id}
                 className="
                   group relative flex items-center gap-2.5 px-3 py-2.5
                   rounded-lg cursor-pointer select-none
@@ -416,25 +416,25 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
 
                 <div className="flex-1 min-w-0">
                   {/* NEW: show inline rename input when this item is being renamed */}
-                  {renamingId === item.id ? (
+                  {renamingId === item?.id ? (
                     <RenameInput
-                      itemId={item.id}
-                      currentTitle={item.title || item.name || ""}
+                      itemId={item?.id}
+                      currentTitle={item?.title || item?.name || ""}
                       onDone={() => setRenamingId(null)}
                     />
                   ) : (
                     <>
                       <p
                         onClick={() =>
-                          router.push(`/dashboard/projects/${item.id}`)
+                          router.push(`/dashboard/projects/${item?.id}`)
                         }
                         className="text-sm text-gray-300 truncate leading-snug group-hover:text-gray-100 transition-colors"
                       >
-                        {item.title || item.name || "Untitled"}
+                        {item?.title || item?.name || "Untitled"}
                       </p>
-                      {item.updatedAt && (
+                      {item?.updatedAt && (
                         <p className="text-[11px] text-gray-600 mt-0.5 leading-none">
-                          {timeAgo(item.updatedAt)}
+                          {timeAgo(item?.updatedAt)}
                         </p>
                       )}
                     </>
@@ -442,10 +442,10 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
                 </div>
 
                 {/* Hide action menu while renaming this item */}
-                {renamingId !== item.id && (
+                {renamingId !== item?.id && (
                   <ActionMenu
-                    itemId={item.id}
-                    itemTitle={item.title || item.name || ""}
+                    itemId={item?.id}
+                    itemTitle={item?.title || item?.name || ""}
                     openId={openActionId}
                     setOpenId={setOpenActionId}
                     renamingId={renamingId}

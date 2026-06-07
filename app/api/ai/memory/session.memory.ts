@@ -17,5 +17,11 @@ export const getSession = (sessionId: string) => {
 export const addSession = (sessionId: string, message: Message) => {
     const session = getSession(sessionId);
 
-    session.push(message);
+    const normalize = message.role === 'assistant' && message.content.startsWith("Tool (") ? 
+    {
+        ...message,
+        content: message.content.replace(/^Tool \([\w_]+\) returned:\n/, "Previously retrieved: ")
+    } : message;
+
+    session.push(normalize as any);
 }

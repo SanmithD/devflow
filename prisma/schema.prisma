@@ -27,26 +27,32 @@ model Account {
 }
 
 model User {
-  id                Int          @id @default(autoincrement())
-  email             String       @unique
-  password          String?
-  user_name         String?
-  emailVerified     DateTime? // ← add this (NextAuth needs it)
-  image             String?
-  role              String       @default("user")
-  isUserAllowed     Boolean      @default(true)
-  isVerified        Boolean      @default(true)
-  ipAddress         String?
-  subscription_plan String?
-  createdAt         DateTime     @default(now())
-  projects          Project[]
-  accounts          Account[]
-  sessions          Session[]
-  ailogs            AILog[]
-  userUsages        UserUsage[]
-  mailRecords       MailRecord[]
-  auditTrials       AuditTrial[]
-  archives          Archive[]
+  id               Int           @id @default(autoincrement())
+  email            String        @unique
+  password         String?
+  user_name        String?
+  emailVerified    DateTime? // ← add this (NextAuth needs it)
+  image            String?
+  role             String        @default("user")
+  isUserAllowed    Boolean       @default(true)
+  isVerified       Boolean       @default(true)
+  ipAddress        String?
+  subscriptionPlan PlanType      @default(FREE)
+  subscription     Subscription?
+  createdAt        DateTime      @default(now())
+  projects         Project[]
+  accounts         Account[]
+  sessions         Session[]
+  ailogs           AILog[]
+  userUsages       UserUsage[]
+  mailRecords      MailRecord[]
+  auditTrials      AuditTrial[]
+  archives         Archive[]
+  bookmarks        Bookmark[]
+  agentAudits      AgentAudit[]
+  chatMedias       ChatMedia[]
+  payments         Payment[]
+  tokenUsages      TokenUsage[]
 
   @@index([id, email])
 }
@@ -72,19 +78,24 @@ model TokenUsage {
   outputTokens Int
   totalTokens  Int
   createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, id])
 }
 
 model Project {
-  id        Int       @id @default(autoincrement())
-  name      String
-  userId    Int
-  title     String?
-  ipAddress String?
-  status    Int       @default(1) // 1 -> active, 2 -> archived
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ailogs    AILog[]
-  archives  Archive[]
+  id          Int          @id @default(autoincrement())
+  name        String
+  userId      Int
+  title       String?
+  ipAddress   String?
+  status      Int          @default(1) // 1 -> active, 2 -> archived
+  createdAt   DateTime     @default(now())
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ailogs      AILog[]
+  archives    Archive[]
+  bookmarks   Bookmark[]
+  agentAudits AgentAudit[]
 
   @@index([id, userId, createdAt, title])
 }
@@ -118,17 +129,19 @@ model MailRecord {
 }
 
 model AILog {
-  id        Int      @unique @default(autoincrement())
-  userId    Int
-  projectId Int
-  input     String
-  response  String
-  ipAddress String?
-  createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          Int          @unique @default(autoincrement())
+  userId      Int
+  projectId   Int
+  input       String
+  response    String
+  ipAddress   String?
+  createdAt   DateTime     @default(now())
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentAudits AgentAudit[]
+  chatMedias  ChatMedia[]
 
-  @@index([projectId, userId, createdAt])
+  @@index([projectId, userId, createdAt, id])
 }
 
 model AuditTrial {
@@ -152,6 +165,114 @@ model Archive {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, userId, id])
+}
+
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  projectId Int
+  title     String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, userId, id])
+}
+
+model AgentAudit {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  projectId Int
+  chatId    Int
+  model     String?
+  input     String?
+  response  String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id])
+  chat      AILog    @relation(fields: [chatId], references: [id])
+
+  @@index([id, projectId, userId])
+}
+
+model ChatMedia {
+  id        Int      @id @default(autoincrement())
+  url       String?
+  type      String?
+  name      String?
+  format    String?
+  size      String?
+  chatId    Int
+  userId    Int
+  createdAt DateTime @default(now())
+  chat      AILog    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([id, userId, chatId])
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  CREATED
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  CREATED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+model Subscription {
+  id                     Int                @id @default(autoincrement())
+  userId                 Int                @unique
+  plan                   PlanType           @default(FREE)
+  status                 SubscriptionStatus
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String? @unique
+  razorpayPaymentId      String?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id])
+
+  @@index([userId, id, status])
+}
+
+model Payment {
+  id                     Int           @id @default(autoincrement())
+  userId                 Int
+  amount                 Int
+  currency               String        @default("INR")
+  razorpayPaymentId      String?
+  razorpayOrderId        String?
+  razorpaySubscriptionId String?
+  status                 PaymentStatus
+  createdAt              DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, id, status])
+}
+
+model WebhookEvent {
+  id          Int      @id @default(autoincrement())
+  event       String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
 }
 
 // npx prisma migrate dev --name add_user_model

@@ -2,108 +2,180 @@
 
 import { ArrowBigLeft, ArrowBigRight, PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import Chat from "../src/components/Chat";
 import ChatHistory from "../src/components/ChatHistory";
 import Navbar from "../src/components/Navbar";
+import Details from "../src/components/project-deatils/Details";
+import { UserType } from "../src/types/profile.type";
 
-export default function DashboardPage() {
-
+export default function DashboardPage({ user }: { user: UserType | null }) {
   const router = useRouter();
 
-  const [showRight, setShowRight] = useState(true);
-  const [showLeft, setShowLeft] = useState(true);
+  const [showLeft, setShowLeft] = useState<boolean>(true);
+  const [showRight, setShowRight] = useState<boolean>(true);
+  const [leftWidth, setLeftWidth] = useState<number>(20);
+  const [rightWidth, setRightWidth] = useState<number>(20);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const savedShowLeft = localStorage.getItem("showLeft");
+    const savedShowRight = localStorage.getItem("showRight");
+    const savedLeftWidth = localStorage.getItem("leftWidth");
+    const savedRightWidth = localStorage.getItem("rightWidth");
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (savedShowLeft !== null) setShowLeft(JSON.parse(savedShowLeft));
+    if (savedShowRight !== null) setShowRight(JSON.parse(savedShowRight));
+    if (savedLeftWidth !== null) setLeftWidth(Number(savedLeftWidth));
+    if (savedRightWidth !== null) setRightWidth(Number(savedRightWidth));
+
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("showLeft", JSON.stringify(showLeft));
+    localStorage.setItem("showRight", JSON.stringify(showRight));
+    localStorage.setItem("leftWidth", leftWidth.toString());
+    localStorage.setItem("rightWidth", rightWidth.toString());
+  }, [showLeft, showRight, leftWidth, rightWidth, mounted]);
+
+  const startResize = (e: React.MouseEvent, side: "left" | "right") => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = side === "left" ? leftWidth : rightWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const diff = moveEvent.clientX - startX;
+      let newWidth;
+
+      if (side === "left") {
+        newWidth = startWidth + (diff / window.innerWidth) * 100;
+        newWidth = Math.max(15, Math.min(40, newWidth));
+        setLeftWidth(newWidth);
+      } else {
+        newWidth = startWidth - (diff / window.innerWidth) * 100;
+        newWidth = Math.max(15, Math.min(40, newWidth));
+        setRightWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  // if (!user) {
+  //   return <Login/>;
+  // }
+
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Navbar />
+    <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
+      <Navbar user={user} />
 
-      <div className="flex flex-1 w-full overflow-hidden">
-        {/* LEFT */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* LEFT SIDEBAR */}
         <div
-          className={`transition-all duration-300 border-r border-gray-800 py-4 overflow-hidden ${
-            showLeft ? "w-[20%]" : "w-[4%] p-0"
-          }`}
+          suppressHydrationWarning
+          style={{ width: showLeft ? `${leftWidth}%` : "60px" }}
+          className="relative border-r border-gray-800 transition-[width] duration-200 overflow-hidden bg-[#0f0f0f]"
         >
-          <h2>
-            {showLeft && (
-              <div className="flex flex-col px-4">
-                <div className="relative flex justify-between">
-                  <h1 className="text-[20px] md:text-2xl font-medium font-serif mb-2 tracking-wider md:mb-4">
-                    Chat History
-                  </h1>
-                  <button
-                    onClick={() => setShowLeft(!showLeft)}
-                    title="hide history"
-                    className={`bg-gray-800 cursor-pointer h-fit text-white px-3 py-1 rounded absolute'right-0'`}
-                  >
-                    {showLeft ? <ArrowBigLeft /> : <ArrowBigRight />}
-                  </button>
-                </div>
-                <div>
-                  <button onClick={()=>router.push('/dashboard')} className="text-[16px] w-full px-4 py-1 rounded-md flex items-center gap-2 cursor-pointer font-medium hover:bg-gray-700 active:bg-gray-800 mb-2 tracking-wider md:mb-4">
-                    <PlusCircle size={18} /> <span>New chat</span> 
-                  </button>
-                </div>
-
-                <div className="h-screen no-scrollbar">
-                  {" "}
-                  {/* or h-full on a flex child */}
-                  <ChatHistory isActive={true} />
-                </div>
+          {showLeft ? (
+            <div className="h-full flex flex-col p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl md:text-2xl font-semibold tracking-wide">
+                  Chat History
+                </h1>
+                <button
+                  onClick={() => setShowLeft(false)}
+                  className="bg-gray-800 hover:bg-gray-700 cursor-pointer rounded-md p-1"
+                >
+                  <ArrowBigLeft />
+                </button>
               </div>
-            )}
-            <button
-              hidden={showLeft}
-              title="view history"
-              onClick={() => setShowLeft(!showLeft)}
-              className={`bg-gray-800 text-white cursor-pointer px-3 py-1 rounded absolute'right-0'`}
-            >
-              {showLeft ? <ArrowBigLeft /> : <ArrowBigRight />}
-            </button>
-          </h2>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="flex items-center gap-2 rounded-md bg-gray-800 hover:bg-gray-700 px-4 py-2 mb-4 cursor-pointer"
+              >
+                <PlusCircle size={18} />
+                <span>New Chat</span>
+              </button>
+              <div className="flex-1 overflow-y-auto no-scrollbar">
+                <ChatHistory isActive />
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex items-start justify-center pt-4">
+              <button
+                onClick={() => setShowLeft(true)}
+                className="bg-gray-800 hover:bg-gray-700 cursor-pointer rounded-md p-1"
+              >
+                <ArrowBigRight />
+              </button>
+            </div>
+          )}
+
+          {showLeft && (
+            <div
+              onMouseDown={(e) => startResize(e, "left")}
+              className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-blue-500"
+            />
+          )}
         </div>
 
-        {/* MIDDLE */}
-        <div className="flex-1 flex-col border-r border-gray-300 p-4 relative overflow-hidden">
-          <div className="flex justify-between items-center"></div>
-
-          {/* chat */}
-          <div className="h-full w-full">
+        {/* CENTER */}
+        <div className="flex-1 overflow-hidden bg-[#111111]">
+          <div className="h-full overflow-y-auto">
             <Chat />
           </div>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT SIDEBAR */}
         <div
-          className={`transition-all duration-300 border-l border-gray-300 py-4 overflow-hidden ${
-            showRight ? "w-[20%]" : "w-[4%] p-0"
-          }`}
+          suppressHydrationWarning
+          style={{ width: showRight ? `${rightWidth}%` : "60px" }}
+          className="relative border-l border-gray-800 transition-[width] duration-200 overflow-hidden bg-[#0f0f0f]"
         >
-          {showRight && (
-            <div className="flex flex-col px-4">
-              <div className="relative flex justify-between">
+          {showRight ? (
+            <div className="h-full flex flex-col p-4">
+              <div className="flex items-center justify-between mb-4">
                 <button
-                  onClick={() => setShowRight(!showRight)}
-                  title="hide history"
-                  className={`bg-gray-800 cursor-pointer h-fit text-white px-3 py-1 rounded absolute'right-0'`}
+                  onClick={() => setShowRight(false)}
+                  className="bg-gray-800 hover:bg-gray-700 cursor-pointer rounded-md p-1"
                 >
-                  {showLeft ? <ArrowBigRight /> : <ArrowBigLeft />}
+                  <ArrowBigRight />
                 </button>
-                <h1 className="text-[20px] md:text-2xl font-medium font-serif mb-2 tracking-wider md:mb-4">
-                  Bookmarks
+                <h1 className="text-xl md:text-2xl font-semibold tracking-wide">
+                  Details
                 </h1>
               </div>
-
-              {/* <ChatHistory isActive={true} /> */}
+              <div className="flex-1 overflow-y-auto no-scrollbar">
+                <Details isActive />
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex items-start justify-center pt-4">
+              <button
+                onClick={() => setShowRight(true)}
+                className="bg-gray-800 hover:bg-gray-700 cursor-pointer rounded-md p-1"
+              >
+                <ArrowBigLeft />
+              </button>
             </div>
           )}
-          <button
-            hidden={showRight}
-            onClick={() => setShowRight(!showRight)}
-            className="bg-gray-800 text-white px-3 py-1 rounded"
-          >
-            {showRight ? <ArrowBigRight /> : <ArrowBigLeft />}
-          </button>
+
+          {showRight && (
+            <div
+              onMouseDown={(e) => startResize(e, "right")}
+              className="absolute top-0 left-0 h-full w-1 cursor-col-resize hover:bg-blue-500"
+            />
+          )}
         </div>
       </div>
     </div>

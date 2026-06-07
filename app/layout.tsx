@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "DevFlow",
   description: "AI Devops helper",
+  icons: {
+    icon: "../public/mini-logo.png",
+    shortcut: "../public/mini-logo.png",
+    apple: "../public/mini-logo.png",
+  }
 };
 
 export default function RootLayout({

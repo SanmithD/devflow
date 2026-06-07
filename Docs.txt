@@ -1,0 +1,233 @@
+Features
+1. Ai Agent chat ✔️
+2. History ✔️
+3. Tool Calling ✔️
+4. Authentication ✔️
+5. Tokenization
+6. Subscription Plan
+7. File Uploads
+8. Voice Input ✔️
+9. Archive Chat ✔️
+10. Bookmarks Chat ✔️
+11. System Confguration ✔️
+12. Contact
+13. Agent Audit ✔️
+
+## Issues
+
+1. Need to add redis in System Api
+2. Need to Complete RAG
+3. PDF and Other file reading need to implement
+4. Search Functionality need to create for History, Archive and Bookmarks
+5. We Search need to fix correctly (Done ✔️)
+6. Speach Recongnition need to add in the input field (Done ✔️)
+7. Change Input field to TextArea (Done ✔️)
+8. If response websearch link is youtube or video then show the thambnail (Done ✔️)
+9. Need to implement Notification Features
+10. Need to send platform logo while sharing the chat
+11. Need to create agent audit schema
+
+if (media_metadata) {
+   // 1. download file
+   // 2. detect type
+   // 3. parse content
+   // 4. chunk (1000 chars + overlap)
+   // 5. embed (OpenAI / other)
+   // 6. store in vector DB (pinecone / weaviate / pgvector)
+}
+
+runReasoner → retrieve relevant chunks → inject into context
+
+Using Cloudinary free tier is a very good choice for a resume/showcase AI SaaS.
+ 
+It’s commonly used in:
+ 
+Next.js apps
+ 
+portfolios
+ 
+AI SaaS projects
+ 
+social/media apps
+ 
+Official site:
+Cloudinary
+ 
+Best Architecture for Fast Uploads
+DO NOT upload through your Next.js server
+
+Bad flow:
+Browser → Next.js API → Cloudinary
+This is slower and wastes Vercel bandwidth.
+ 
+Best Practice → Direct Uploads
+Use:
+Browser → Cloudinary directly
+Then save returned URL into Prisma/PostgreSQL.
+ 
+This is:
+ 
+faster
+ 
+scalable
+ 
+cheaper
+ 
+production standard
+ 
+Recommended Setup
+Frontend Upload
+Use:
+ 
+npm install next-cloudinary
+Official package:
+next-cloudinary
+ 
+Fastest Upload Method
+Use Upload Widget
+Cloudinary provides:
+ 
+drag/drop
+ 
+compression
+ 
+progress
+ 
+retry
+ 
+mobile optimization
+ 
+Example:
+ 
+<CldUploadWidget
+  uploadPreset="your_preset"
+  onSuccess={(result) => {
+    console.log(result.info.secure_url);
+  }}
+>
+  {({ open }) => (
+    <button onClick={() => open()}>
+      Upload
+    </button>
+  )}
+</CldUploadWidget>
+Make Uploads Fast
+1. Compress Images Before Upload
+Use:
+ 
+npm install browser-image-compression
+This massively improves speed.
+ 
+Especially on mobile.
+ 
+2. Limit File Size
+For showcase project:
+ 
+Media	Recommended Limit
+Images	2–5 MB
+Videos	20–50 MB
+3. Use Auto Optimization
+Cloudinary can automatically optimize delivery.
+ 
+Example URL transformations:
+ 
+f_auto,q_auto
+Meaning:
+ 
+best format automatically
+ 
+smart compression automatically
+ 
+This makes image delivery VERY fast.
+ 
+Best Way to Display Images in Next.js
+Use Cloudinary image component:
+ 
+<CldImage
+  width="800"
+  height="600"
+  src="uploaded-image"
+  alt="image"
+/>
+Benefits:
+ 
+lazy loading
+ 
+optimization
+ 
+CDN delivery
+ 
+responsive sizing
+ 
+Database Strategy
+Store ONLY metadata in Prisma:
+ 
+model Upload {
+  id        String @id @default(cuid())
+  url       String
+  publicId  String
+  createdAt DateTime @default(now())
+}
+Do NOT store files in PostgreSQL.
+ 
+Free Tier Reality
+Cloudinary free tier is enough for:
+ 
+portfolios
+ 
+showcase apps
+ 
+MVPs
+ 
+small AI SaaS
+ 
+Usually includes:
+ 
+CDN delivery
+ 
+transformations
+ 
+storage
+ 
+bandwidth
+ 
+For AI Apps Specifically
+Cloudinary works very well for:
+ 
+user avatars
+ 
+AI-generated images
+ 
+profile uploads
+ 
+PDFs
+ 
+screenshots
+ 
+gallery systems
+ 
+Best Stack for Your Upload System
+Purpose	Tool
+Uploads	Cloudinary
+DB metadata	Neon + Prisma
+Cache/session	Upstash
+Frontend	Next.js
+Hosting	Vercel
+That architecture is modern, scalable, and recruiter-friendly.
+
+
+Media Uploads
+1. Text ✔️
+2. Docx ✔️
+3. Pdf ✔️
+4. Excel ✔️
+5. PPTX ✔️
+6. JSON ✔️
+
+* User profile ✔️
+* Subscription ( RazorPay )
+* Tokenization (tokenziation)
+* Canvas
+* Image reading
+* Start Dummy Response 
+* Contact 

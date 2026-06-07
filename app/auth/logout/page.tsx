@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import toast from "react-hot-toast";
 
-export function LogoutButton() {
+export default function LogoutButton() {
 
     const handleLogout = async() => {
         try {

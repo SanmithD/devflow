@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { HistoryRepository } from "../repository/history.repository";
 import { authOptions } from "../src/lib/auth";
+import { redis } from "../src/lib/redis";
 
-export const getAllHistory = async(req: NextRequest) => {
+export const getAllHistory = async (req: NextRequest) => {
     try {
         const session = await getServerSession(authOptions);
 
@@ -20,8 +21,15 @@ export const getAllHistory = async(req: NextRequest) => {
 
         const { limit } = body;
 
-        if(!limit){
-            return NextResponse.json({ message: 'Limit is missing' },{ status: 400 });
+        if (!limit) {
+            return NextResponse.json({ message: 'Limit is missing' }, { status: 400 });
+        }
+
+        const cacheKey = `history:${userId}:${limit}`;
+        const cached = await redis.get<typeof response>(cacheKey);
+
+        if (cached) {
+            return NextResponse.json(cached);
         }
 
         const historyRepo = new HistoryRepository();
@@ -34,6 +42,8 @@ export const getAllHistory = async(req: NextRequest) => {
 
         const nextCursor = response?.data?.length === limit ? response?.data?.[0].id : null;
 
+        await redis.set(cacheKey, response, { ex: 60 });
+
         return NextResponse.json({ messages: response.data, nextCursor, hasMore: !!nextCursor }, { status: 200 });
 
     } catch (error) {
@@ -43,7 +53,7 @@ export const getAllHistory = async(req: NextRequest) => {
 }
 
 export const updateChatHistory = async (req: NextRequest) => {
-    try { 
+    try {
         const session = await getServerSession(authOptions);
 
         if (!session) {
@@ -72,6 +82,8 @@ export const updateChatHistory = async (req: NextRequest) => {
             req.headers.get("x-real-ip") ||
             "unknown";
 
+        await redis.del(`history:${userId}:*`);
+
         const historyRepo = new HistoryRepository();
 
         const response = await historyRepo.updateHistory({ id, userId: Number(userId), title, ip });
@@ -96,7 +108,7 @@ export const deleteChatHistory = async (req: NextRequest, id: number) => {
             return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
         }
 
-        const userId = session.user.id; 
+        const userId = session.user.id;
 
         if (!id || typeof id !== 'number' || id <= 0) {
             return NextResponse.json({ message: 'Invalid id' }, { status: 400 })
@@ -115,6 +127,8 @@ export const deleteChatHistory = async (req: NextRequest, id: number) => {
             return NextResponse.json({ message: response.message }, { status: 400 })
         }
 
+        await redis.del(`history:${userId}:*`);
+
         return NextResponse.json({ message: response.message }, { status: 200 });
 
     } catch (error) {
@@ -131,10 +145,10 @@ export const deleteAllChatHistory = async (req: NextRequest) => {
             return NextResponse.json({ message: 'Unauthorized access' }, { status: 401 });
         }
 
-        const userId = session.user.id; 
+        const userId = session.user.id;
 
-        if(!userId){
-            return NextResponse.json({ message: 'User not found' },{ status: 403 });
+        if (!userId) {
+            return NextResponse.json({ message: 'User not found' }, { status: 403 });
         }
 
         const ip =
@@ -149,6 +163,8 @@ export const deleteAllChatHistory = async (req: NextRequest) => {
         if (!response.success) {
             return NextResponse.json({ message: response.message }, { status: 400 })
         }
+
+        await redis.del(`history:${userId}:*`);
 
         return NextResponse.json({ message: response.message }, { status: 200 });
 

@@ -1,8 +1,10 @@
+import { MediaMetadata } from "@/app/src/types/chat.type";
 import { ai } from "../config/ai.config";
 
 type ChatMessage = {
     role: "system" | "user" | "assistant";
     content: string;
+    media?: MediaMetadata;
 }
 
 export const generateAIResponse = async (
@@ -17,12 +19,23 @@ export const generateAIResponse = async (
     }) => {
     try {
 
+        const safeMessage = toolChoice === 'none' ? messages.map(msg => {
+            if(msg.role === 'assistant' && msg.content.startsWith("Tool (")) {
+                return {
+                    ...msg,
+                    content: msg.content.replace(/^Tool \([\w_]+\) returned:\n/, "Previously retrieved: ")
+                }
+            }
+
+            return msg;
+        }) : messages;
+
         const stream = await ai.chat.completions.create({
             model: "openai/gpt-oss-20b",
-            messages: messages,
+            messages: safeMessage,
             stream: true,
             temperature: 0.7,
-            tool_choice: toolChoice,
+            ...(toolChoice === "auto" ? { tool_choice: "auto" } : {}),
             tools: undefined
         }, {
             signal: abortSignal
