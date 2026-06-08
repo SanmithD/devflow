@@ -1,5 +1,5 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from 'bcrypt';
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import bcrypt from 'bcryptjs';
 import { NextAuthOptions } from "next-auth";
 import { AdapterUser } from "next-auth/adapters";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -78,12 +78,27 @@ const adapter = {
     }) as any;
   },
 
-  async getUserByAccount(providerAccountId: any) {
+  async getUserByAccount({
+    provider,
+    providerAccountId,
+  }: {
+    provider: string;
+    providerAccountId: string;
+  }) {
     const account = await prisma.account.findUnique({
-      where: { provider_providerAccountId: providerAccountId },
-      include: { user: true },
+      where: {
+        provider_providerAccountId: {
+          provider,
+          providerAccountId,
+        },
+      },
+      include: {
+        user: true,
+      },
     });
-    return account?.user ? toAdapterUser(account.user) : null;
+    return account?.user
+      ? toAdapterUser(account.user)
+      : null;
   },
 
   async getSessionAndUser(sessionToken: string) {

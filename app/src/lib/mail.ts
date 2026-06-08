@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { readFileSync } from 'fs';
 import handlebars from 'handlebars';
 // import nodemailer from "nodemailer";
@@ -16,7 +16,7 @@ import { redis } from '../lib/redis';
 //     },
 // });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+export const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendOtpMail = async ({ email, otp }: { email: string; otp: string; }) => {
     try {
@@ -38,7 +38,7 @@ export const sendOtpMail = async ({ email, otp }: { email: string; otp: string; 
             to: email,
             subject: 'DevFlow - Verification Otp',
             html
-        })
+        });
     } catch (error) {
         console.log('fail to send opt', error)
     }

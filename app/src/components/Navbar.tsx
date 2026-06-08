@@ -1,7 +1,8 @@
 "use client";
 
 import LogoutButton from "@/app/auth/logout/page";
-import { Bell, User2Icon } from "lucide-react";
+import ContactPage from "@/app/dashboard/contact/page";
+import { Bell, Contact, User2Icon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import ProfileCard from "./project-deatils/components/ProfileCard";
 function Navbar({ user }: { user: UserType | null }) {
   const router = useRouter();
   const [profileVisible, setProfileVisible] = useState<boolean>(false);
+  const [contactVisible, setContactVisible] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -51,6 +53,18 @@ function Navbar({ user }: { user: UserType | null }) {
         <div>
           <LogoutButton />
         </div>
+        <div
+          className="
+    relative
+    w-8 h-8 md:w-10 md:h-10
+    rounded-full overflow-hidden
+    flex items-center justify-center
+    cursor-pointer
+  "
+          onClick={() => setContactVisible(!contactVisible)}
+        >
+          <Contact size={30} />
+        </div>
 
         {/* Profile avatar + dropdown */}
         <div className="relative" ref={dropdownRef}>
@@ -80,6 +94,13 @@ function Navbar({ user }: { user: UserType | null }) {
           {profileVisible && (
             <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-white/10 bg-[#0f0f0f] shadow-2xl">
               <ProfileCard user={user} />
+            </div>
+          )}
+
+          {/* Contact */}
+          {contactVisible && (
+            <div className="absolute right-0 top-12 z-50 w-80 md:w-130 rounded-xl border border-white/10 bg-[#0f0f0f] shadow-2xl">
+              <ContactPage />
             </div>
           )}
         </div>
