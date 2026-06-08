@@ -5,7 +5,7 @@ import { redis } from "@/app/src/lib/redis";
 import { validateRequest } from "@/app/src/lib/validate";
 import { VerifyType } from "@/app/src/types/auth.type";
 import { verifySchema } from "@/app/src/validators/auth.schema";
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from "next/server";
 
 export const POST = async (req: NextRequest) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import toast from "react-hot-toast";
 
@@ -20,9 +21,10 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="px-4 py-2 bg-black text-white rounded"
+      title="Logout"
+      className="px-4 py-2 bg-black cursor-pointer hover:text-red-500 text-white rounded"
     >
-      Logout
+      <LogOut/>
     </button>
   );
 }
