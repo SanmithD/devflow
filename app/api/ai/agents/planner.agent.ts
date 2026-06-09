@@ -44,7 +44,7 @@ export const runPlanner = async (
             responseText += decoder.decode(value, { stream: true });
         }
 
-        console.log("🗺️ Planner raw response:", responseText);
+        console.log("Planner raw response:", responseText);
 
         // clean the raw response
         const cleaned = responseText
@@ -59,7 +59,7 @@ export const runPlanner = async (
         console.log('parsed res', parsed);
         return AgentDecisionSchema.parse(parsed);
     } catch (error) {
-        console.error("❌ Planner failed:", error);
+        console.error("Planner failed:", error);
         return null;
     }
 }

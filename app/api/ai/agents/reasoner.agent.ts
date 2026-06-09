@@ -59,7 +59,7 @@ CONTEXT: ${context}`
             enrichedInput += decoder.decode(value, { stream: true })
         }
 
-        console.log("🧠 Reasoner output:", enrichedInput);
+        console.log("Reasoner output:", enrichedInput);
         return { context, enrichedInput: enrichedInput || userInput };
 
     } catch (error) {

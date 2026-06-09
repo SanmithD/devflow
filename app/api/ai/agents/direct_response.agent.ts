@@ -18,7 +18,7 @@ export const runDirectResponse = async(
 ) => {
     try {
         
-        console.log("🎯 Direct response path — invoking ReAct agent...");
+        console.log("Direct response path — invoking ReAct agent...");
 
         const executor = await createAgent();
 
@@ -39,16 +39,16 @@ export const runDirectResponse = async(
                 ? lastMessage.content
                 : JSON.stringify(lastMessage?.content ?? result, null, 2);
 
-                console.log("✅ Direct response answer:", finalAnswer.substring(0, 200));
+                console.log("Direct response answer:", finalAnswer.substring(0, 200));
 
         addSession(session_id, { role: "assistant", content: finalAnswer });
 
-        // ✅ Stream only here — final response
+        // Stream only here — final response
         return createTextStream(finalAnswer, abortSignal);
 
     } catch (error) {
         if ((error as Error).name === "AbortError") return createTextStream("");
-        console.error("❌ Direct response error:", error);
+        console.error("Direct response error:", error);
         return createTextStream("");
     }
 }

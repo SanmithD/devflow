@@ -30,12 +30,12 @@ export const runToolExecution = async (
 
         console.log('selected tool', selectedTool);
 
-        console.log(`🔧 Executing tool: ${tool} with input: ${input}`);
+        console.log(`Executing tool: ${tool} with input: ${input}`);
         const result = await selectedTool.invoke(input);
 
         const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
 
-        console.log(`✅ Tool result (${tool}):`, resultText.substring(0, 200));
+        console.log(`Tool result (${tool}):`, resultText.substring(0, 200));
 
         addSession(session_id, {
             role: "assistant",

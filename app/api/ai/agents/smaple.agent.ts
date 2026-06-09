@@ -42,7 +42,7 @@ export const runAgent = async (
         for (let i = 0; i < 5; i++) {
             if (abortSignal.aborted) return createTextStream("Generation Stopped");
 
-            console.log(`\n🔄 Agent iteration ${i + 1}`);
+            console.log(`\nAgent iteration ${i + 1}`);
 
             const decision = await runPlanner({
                 userInput: resonerRes?.enrichedInput,
