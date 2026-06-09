@@ -124,7 +124,7 @@ function Signup() {
         otp,
       });
 
-      router.push('/dashboard');
+      router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`);
       toast.success("Account created 🎉");
     } catch (err) {
       console.error(err);

@@ -426,7 +426,7 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
                     <>
                       <p
                         onClick={() =>
-                          router.push(`/dashboard/projects/${item?.id}`)
+                          router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${item?.id}`)
                         }
                         className="text-sm text-gray-300 truncate leading-snug group-hover:text-gray-100 transition-colors"
                       >

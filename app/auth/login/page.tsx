@@ -119,7 +119,7 @@ function Login() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`);
       toast.success("Login successful 🎉");
     } catch (err) {
       console.error(err);
