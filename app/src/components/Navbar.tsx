@@ -34,7 +34,7 @@ function Navbar({ user }: { user: UserType | null }) {
     <div className="flex justify-between items-center border-b border-b-gray-800 px-2 md:px-4">
       {/* Logo */}
       <div
-        onClick={() => router.push("/dashboard")}
+        onClick={() => router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)}
         className="relative h-10 w-[20%] md:h-15 flex justify-start overflow-hidden cursor-pointer"
       >
         <Image

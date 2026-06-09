@@ -100,7 +100,7 @@ export default function DashboardPage({ user }: { user: UserType | null }) {
                 </button>
               </div>
               <button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)}
                 className="flex items-center gap-2 rounded-md bg-gray-800 hover:bg-gray-700 px-4 py-2 mb-4 cursor-pointer"
               >
                 <PlusCircle size={18} />
