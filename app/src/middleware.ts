@@ -1,24 +1,35 @@
+import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "./lib/jwt";
 
-export function middleware(req: NextRequest) {
-  const token = req.cookies.get("token")?.value;
+const protectedRoutes = ["/dashboard"];
+const authRoutes = ["/login", "/register"];
 
-  if (req.nextUrl.pathname.startsWith("/dashboard")) {
-    if (!token) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+export async function middleware(req: NextRequest) {
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
-    const user = verifyToken(token);
+  const { pathname } = req.nextUrl;
 
-    if (!user) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+  const isProtected = protectedRoutes.some(r => pathname.startsWith(r));
+  const isAuthRoute = authRoutes.some(r => pathname.startsWith(r));
+
+  // Redirect logged-in users away from auth pages
+  if (token && isAuthRoute) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  // Redirect unauthenticated users away from protected pages
+  if (!token && isProtected) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
