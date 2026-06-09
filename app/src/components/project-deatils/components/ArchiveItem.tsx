@@ -50,7 +50,13 @@ cursor-pointer
         : "border-transparent hover:bg-white/4"
     }
   `}
-      onClick={() => router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${item.id}`)}
+      onClick={() =>{ 
+        if(process.env.NODE_ENV === 'development'){
+          router.push(`/dashboard/projects/${item.id}`)
+        }else{
+          router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${item.id}`)
+        }
+        }}
     >
       <MessageSquare className="w-4 h-4 text-gray-500 shrink-0" />
 

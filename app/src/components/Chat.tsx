@@ -395,7 +395,13 @@ function Chat() {
         }
 
         if (pendingProjectId) {
-          router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${pendingProjectId}`);
+          if (process.env.NODE_ENV === "development") {
+            router.push(`/dashboard/projects/${pendingProjectId}`);
+          } else {
+            router.push(
+              `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${pendingProjectId}`,
+            );
+          }
         }
       }
     } catch (error) {
@@ -766,7 +772,13 @@ function Chat() {
 
         <div
           className="w-full place-content-end cursor-pointer mb-0 flex justify-center"
-          onClick={() => router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/terms`)}
+          onClick={() => {
+            if (process.env.NODE_ENV === "development") {
+              router.push(`/dashboard/terms`);
+            } else {
+              router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/terms`);
+            }
+          }}
         >
           <p className="text-gray-500 text-xs hover:text-emerald-500 transition-colors">
             DevFlow Agent can make mistakes. Please double-check responses.

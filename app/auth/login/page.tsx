@@ -119,7 +119,11 @@ function Login() {
         return;
       }
 
-      router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`);
+      if (process.env.NODE_ENV === "development") {
+        router.push(`/dashboard`);
+      } else {
+        router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`);
+      }
       toast.success("Login successful 🎉");
     } catch (err) {
       console.error(err);
@@ -211,8 +215,12 @@ function Login() {
         {/* OAuth Buttons */}
         <div className="flex gap-2.5">
           <button
-            onClick={() => signIn("google", { callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` })}
-            className="flex-1 h-[46px] flex items-center justify-center gap-2 bg-white/4 border border-white/[0.08] rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/[0.15] hover:text-white"
+            onClick={() =>
+              signIn("google", {
+                callbackUrl: process.env.NODE_ENV === 'development' ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` : '/dashboard',
+              })
+            }
+            className="flex-1 h-11.5 flex items-center justify-center gap-2 bg-white/4 border border-white/8 rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/15 hover:text-white"
           >
             <svg
               width="18"
@@ -241,7 +249,11 @@ function Login() {
           </button>
 
           <button
-            onClick={() => signIn("github", { callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` })}
+            onClick={() =>
+              signIn("github", {
+                callbackUrl: process.env.NODE_ENV === 'development' ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` : '/dashboard',
+              })
+            }
             className="flex-1 h-11.5 flex items-center justify-center gap-2 bg-white/4 border border-white/8 rounded-[10px] text-[13px] text-white/70 transition-all duration-200 hover:bg-white/[0.07] hover:border-white/15 hover:text-white"
           >
             <svg

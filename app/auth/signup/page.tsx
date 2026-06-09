@@ -124,7 +124,11 @@ function Signup() {
         otp,
       });
 
-      router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`);
+      if(process.env.NODE_ENV === 'development'){
+          router.push(`/dashboard`);
+        }else{
+          router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`);
+        }
       toast.success("Account created 🎉");
     } catch (err) {
       console.error(err);

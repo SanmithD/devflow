@@ -101,7 +101,7 @@ function ActionMenu({
     setOpenId(null);
     try {
       // FIX 3: bookmark is likely a POST/PUT, not DELETE — adjust to your API
-      await axios.post(`/api/projects/bookmark/${itemId}`,{ id: itemId });
+      await axios.post(`/api/projects/bookmark/${itemId}`, { id: itemId });
       toast.success("Bookmarked");
     } catch (error) {
       console.error("bookmark error", error);
@@ -119,7 +119,7 @@ function ActionMenu({
     } catch (error) {
       console.error("archive error", error);
       toast.error("Failed to archive");
-    } 
+    }
   };
 
   const actions = [
@@ -425,9 +425,15 @@ export default function ChatHistory({ isActive }: { isActive: boolean }) {
                   ) : (
                     <>
                       <p
-                        onClick={() =>
-                          router.push(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${item?.id}`)
-                        }
+                        onClick={() => {
+                          if (process.env.NODE_ENV === "development") {
+                            router.push(`/dashboard/projects/${item?.id}`);
+                          } else {
+                            router.push(
+                              `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${item?.id}`,
+                            );
+                          }
+                        }}
                         className="text-sm text-gray-300 truncate leading-snug group-hover:text-gray-100 transition-colors"
                       >
                         {item?.title || item?.name || "Untitled"}
