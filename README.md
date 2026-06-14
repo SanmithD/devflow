@@ -1,301 +1,647 @@
-# DevFlow — AI DevOps Agent System
+````md
+# DevFlow Agent
 
-> A multi-agent DevOps reasoning pipeline with tool orchestration, memory, and streaming response system.
+> AI-Powered DevOps Assistant with RAG, Document Parsing, Context-Aware Search, and Redis Caching.
 
-![Next.js](https://img.shields.io/badge/Next.js-black?style=flat&logo=next.js)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)
-![Groq](https://img.shields.io/badge/Groq-AI-orange?style=flat)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel&logoColor=white)
+## 🚀 Live Demo
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [System Architecture](#system-architecture)
-- [Memory System](#memory-system)
-- [Tools System](#tools-system)
-- [Database Architecture](#database-architecture)
-- [Tech Stack](#tech-stack)
-- [Agent Runtime Flow](#agent-runtime-flow)
-- [Authentication Flow](#authentication-flow)
-- [Observability & Logging](#observability--logging)
-- [Subscription System](#subscription-system)
-- [Setup Guide](#setup-guide)
-- [Design Principles](#design-principles)
+https://devflowagent.netlify.app
 
 ---
 
-## Overview
+# 📖 Overview
 
-DevFlow is an AI-powered DevOps assistant that reasons, plans, uses tools, and generates streaming responses to solve infrastructure, deployment, and engineering problems interactively.
+DevFlow Agent is an AI-powered DevOps assistant designed to help developers, DevOps engineers, and technical teams solve infrastructure and development challenges faster.
 
-**Key capabilities:**
+The platform combines:
 
-- **Tool-augmented reasoning** — Calls external APIs and internal tools as part of problem solving
-- **Real-time streaming** — Token-by-token responses via WebSockets or SSE
-- **Memory-aware conversations** — Short-term, long-term, and summarized memory
-- **DevOps integrations** — GitHub, StackOverflow, search tools, and more
-- **Persistent chat history** — With bookmarks, archives, and project scoping
+- OpenAI LLMs
+- Retrieval-Augmented Generation (RAG)
+- Document Intelligence
+- Vector Search
+- Redis Caching
+- Context-Aware Conversations
+
+to deliver accurate, relevant, and production-ready responses.
+
+The system can parse documents, retrieve relevant information from knowledge bases, and generate intelligent answers based on both uploaded documents and AI reasoning.
 
 ---
 
-## System Architecture
+# ✨ Features
 
-### High-Level Flow
+## 🤖 AI DevOps Assistant
 
+Get expert assistance for:
+
+- Kubernetes
+- Docker
+- Terraform
+- AWS
+- Azure
+- Google Cloud Platform (GCP)
+- CI/CD Pipelines
+- GitHub Actions
+- Jenkins
+- Linux Administration
+- Monitoring & Observability
+- Infrastructure Automation
+
+---
+
+## 📚 Retrieval-Augmented Generation (RAG)
+
+DevFlow Agent uses a RAG pipeline to provide context-aware answers.
+
+### Workflow
+
+1. Upload documents
+2. Extract text
+3. Chunk content
+4. Generate embeddings
+5. Store vectors
+6. Retrieve relevant context
+7. Generate accurate AI responses
+
+### Benefits
+
+- Reduced hallucinations
+- Higher answer accuracy
+- Domain-specific knowledge
+- Context-aware responses
+- Private knowledge retrieval
+
+---
+
+## 📄 Document Parsing
+
+Supported formats:
+
+| Format | Supported |
+|----------|------------|
+| PDF | ✅ |
+| DOCX | ✅ |
+| PPT/PPTX | ✅ |
+| CSV | ✅ |
+| TXT | ✅ |
+| Markdown | ✅ |
+
+### Capabilities
+
+- Text extraction
+- Document chunking
+- Metadata processing
+- Embedding generation
+- Knowledge indexing
+
+---
+
+## 🔍 Semantic Search
+
+Search uploaded knowledge bases using vector similarity search.
+
+Features:
+
+- Semantic matching
+- Context retrieval
+- Relevant chunk ranking
+- Knowledge discovery
+
+Powered by:
+
+- Pinecone Vector Database
+- OpenAI Embeddings
+
+---
+
+## 💬 Context-Aware Conversations
+
+The AI maintains conversational context by using:
+
+- Previous messages
+- Session history
+- Retrieved documents
+- User interactions
+
+This enables:
+
+- Follow-up questions
+- Multi-step problem solving
+- Better contextual understanding
+
+---
+
+## ⚡ Redis Caching
+
+Integrated Redis caching improves performance by storing:
+
+- AI responses
+- Frequently requested data
+- Session-related information
+
+Benefits:
+
+- Reduced latency
+- Faster responses
+- Lower OpenAI costs
+- Improved scalability
+
+Powered by:
+
+- Upstash Redis
+- ioredis
+
+---
+
+## 🔐 Authentication
+
+Authentication is implemented using NextAuth.
+
+Supported providers:
+
+- Google OAuth
+- GitHub OAuth
+- JWT Authentication
+
+Features:
+
+- User registration
+- Secure login
+- Session management
+- Protected routes
+
+---
+
+## 📧 Email Integration
+
+Email services are used for:
+
+- Account verification
+- Notifications
+- Password recovery
+- User communication
+
+Powered by:
+
+- Nodemailer
+- SMTP
+- Resend
+
+---
+
+## ☁️ Cloud Storage
+
+Cloudinary integration provides:
+
+- Media storage
+- Asset management
+- File uploads
+- Optimized delivery
+
+---
+
+## 💳 Subscription & Payments
+
+Integrated with Razorpay.
+
+Supports:
+
+- Monthly subscriptions
+- Pro plans
+- Enterprise plans
+- Webhook verification
+
+---
+
+# 🏗️ System Architecture
+
+```text
+┌──────────────────────┐
+│      Frontend        │
+│   Next.js + React    │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│      API Layer       │
+│    Next.js Server    │
+└──────────┬───────────┘
+           │
+ ┌─────────┼──────────┐
+ ▼         ▼          ▼
+
+PostgreSQL  Redis    OpenAI
+ Prisma    Cache      LLM
+
+    ▼
+Pinecone Vector DB
+
+    ▼
+RAG Retrieval Layer
+
+    ▼
+Context-Aware Response
 ```
-User Input
-   ↓
-Context Builder (Memory + Chat History + DB Context)
-   ↓
-Planner Model (Decides steps & tools)
-   ↓
-Decision Layer (Tool vs Direct Answer)
-   ↓
-Tool Executor (if required)
-   ↓
-Reasoning Model (Deep analysis)
-   ↓
-Synthesizer Model (Final structured response)
-   ↓
-Streaming Engine (Token-by-token output)
-   ↓
-Client UI
-```
-
-### Key Components
-
-| Component | Responsibility |
-|---|---|
-| **Context Builder** | Aggregates chat history, user memory, project context, and DB records |
-| **Planner Model** | Breaks down queries, identifies required tools, creates execution steps |
-| **Decision Layer (Router)** | Outputs `FINAL_ANSWER` or `TOOL_CALL` via structured JSON / function calling |
-| **Tool Executor** | Executes external/internal tools (Search, GitHub, Weather, Calculator, etc.) |
-| **Reasoning Model** | Performs deep technical reasoning and DevOps troubleshooting |
-| **Synthesizer Model** | Combines tool results, reasoning output, and context into a final response |
-| **Streaming Engine** | Streams tokens in real time via WebSockets or SSE |
 
 ---
 
-## Memory System
+# 🛠️ Tech Stack
 
-DevFlow uses a three-tier memory model:
+## Frontend
 
-| Type | Description | Storage |
-|---|---|---|
-| **Short-Term** | Active chat context, last N messages | In-memory |
-| **Long-Term** | User preferences, past issues, frequently used commands | PostgreSQL |
-| **Chat Summarization** | Periodic summarization for token optimization | PostgreSQL |
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- React Query
+- Recharts
 
----
+## Backend
 
-## Tools System
+- Next.js API Routes
+- Node.js
+- Prisma ORM
+- PostgreSQL
 
-### Tool Categories
+## AI & LLM
 
-**System Tools**
-- Calculator
-- Date & Time
-- System Configuration
-- User Details
+- OpenAI
+- LangChain
+- LangGraph
+- LlamaIndex
+- Transformers.js
 
-**Search Tools**
-- Exa Search
-- Tavily Search
-- Web Search
+## Vector Database
 
-**Developer Tools**
-- GitHub Search
-- StackExchange API
+- Pinecone
 
-**Utility Tools**
-- Weather API
+## Cache
 
-### Tool Interface
+- Upstash Redis
+- ioredis
 
-```typescript
-interface Tool {
-  name: string;
-  description: string;
-  inputSchema: object;
-  execute(input: any): Promise<any>;
-}
-```
+## Authentication
 
-### Tool Execution Flow
+- NextAuth
+- JWT
+- OAuth
 
-```
-Planner → Tool Selection → Execution → Response Injection → Synthesizer
-```
+## Storage
+
+- Cloudinary
+
+## Payments
+
+- Razorpay
 
 ---
 
-## Database Architecture
+# 📁 Project Structure
 
-### Core Entities
-
-| Entity | Purpose |
-|---|---|
-| **User** | Authentication identity, subscription status |
-| **Project** | User workspace container |
-| **Account** | OAuth / login provider info |
-| **AI Log** | Each LLM request/response cycle |
-| **Archive** | Archived chats |
-| **Bookmark** | Saved messages or chats |
-| **User Audit** | User activity tracking |
-| **Agent Audit** | Tool usage and agent decisions |
-| **Mail Record** | OTP and email logs |
-
-### Entity Relationships
-
-```
-User ──< Projects
-User ──< AI Logs
-User ──< Bookmarks
-Project ──< Chats
-Chat ──< Messages
+```bash
+devflow/
+│
+├── app/
+│   ├── api/
+│   │   ├── ai/                 # AI agent APIs and LLM interactions
+│   │   ├── auth/               # Authentication APIs
+│   │   ├── billing/            # Razorpay billing and subscriptions
+│   │   ├── contact/            # Contact form APIs
+│   │   ├── projects/           # Project management APIs
+│   │   ├── protected/          # Protected/private endpoints
+│   │   ├── system/             # System information and monitoring APIs
+│   │   ├── test-redis/         # Redis connectivity testing
+│   │   ├── upload/             # File upload APIs
+│   │   └── webhooks/           # Razorpay and external webhooks
+│   │
+│   ├── auth/                   # Authentication pages
+│   ├── controllers/            # Request controllers
+│   ├── dashboard/              # Main dashboard pages
+│   ├── generated/              # Auto-generated files
+│   ├── repository/             # Database repository layer
+│   ├── services/               # Business logic and services
+│   ├── src/                    # Shared application source code
+│   │
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── providers.tsx
+│
+├── prisma/                     # Prisma schema and migrations
+├── public/                     # Static assets
+├── components/                 # Shared React components
+├── hooks/                      # Custom React hooks
+├── lib/                        # Utility libraries
+├── types/                      # TypeScript types
+├── middleware.ts               # Route protection and middleware
+├── package.json
+├── tsconfig.json
+├── next.config.ts
+└── README.md
 ```
 
 ---
 
-## Tech Stack
+# 🏛 Architecture Overview
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | Next.js, TailwindCSS, React Hot Toast, Lucide React |
-| **Backend** | Next.js API Routes, Prisma ORM |
-| **Database** | PostgreSQL (Neon DB), Redis Cloud |
-| **AI / LLM** | Groq API (OpenAI-compatible), LangChain |
-| **Auth & Email** | NextAuth, JWT, Resend |
-| **Integrations** | Exa Search API, StackExchange API, Weather API, GitHub API |
-| **Infrastructure** | Vercel, Docker, GitHub |
+```text
+Frontend (Next.js App Router)
+            │
+            ▼
+      API Routes
+            │
+    ┌───────┼────────┐
+    ▼       ▼        ▼
 
----
+ OpenAI   Redis   PostgreSQL
+   LLM   Cache      Prisma
 
-## Agent Runtime Flow
+    ▼
+ Pinecone Vector DB
 
-```
-1. Authentication       User logs in via NextAuth + JWT
-2. Request Received     Query sent to /api/agent
-3. Context Building     Load chat history, memory, and project context
-4. Planner Model        Break query into steps + identify tool requirements
-5. Decision Layer       Route to direct answer OR tool execution
-6. Tool Execution       Execute external APIs (if needed)
-7. Reasoning Model      Perform deep DevOps analysis
-8. Synthesizer Model    Combine reasoning output + tool results + context
-9. Streaming Response   Stream final response to UI
-10. Logging & Storage   Store AI logs, audits, and chat history updates
+    ▼
+   RAG Engine
+
+    ▼
+ Context-Aware AI Responses
 ```
 
 ---
 
-## Authentication Flow
+# 📂 Core Directories
 
+| Directory | Purpose |
+|------------|----------|
+| `app/api/ai` | AI Agent and OpenAI integrations |
+| `app/api/auth` | Authentication APIs |
+| `app/api/billing` | Razorpay subscriptions and payments |
+| `app/api/upload` | File upload and processing |
+| `app/api/webhooks` | External service webhooks |
+| `app/repository` | Database access layer |
+| `app/services` | Business logic implementation |
+| `app/controllers` | Request handling layer |
+| `app/dashboard` | Dashboard UI |
+| `prisma` | Database schema and migrations |
+| `components` | Shared UI components |
+| `hooks` | Reusable React hooks |
+| `lib` | Utilities and helper functions |
+| `public` | Static assets |
+
+# ⚙️ Environment Variables
+
+Create a `.env` file in the root directory.
+
+```env
+DATABASE_URL=
+
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+
+EMAIL_USER=
+EMAIL_PASS=
+
+JWT_SECRET=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_TOKEN=
+
+NEXTAUTH_URL=
+NEXTAUTH_SECRET=
+
+RESEND_API_KEY=
+
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+
+RAPID_API_KEY=
+RAPID_BASE_URL=
+
+TAVILY_SEARCH_API_KEY=
+EXA_SEARCH_API_KEY=
+
+NEXT_PUBLIC_CLOUDINARY_URL=
+NEXT_PUBLIC_CLOUDINARY_PRESET_NAME=
+NEXT_PUBLIC_CLOUDINARY_NAME=
+
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
+PINECONE_API_KEY=
+PINECONE_INDEX_NAME=
+
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
+
+NEXT_PUBLIC_APP_URL=
+
+RAZORPAY_PRO_PLAN_ID=
+RAZORPAY_ENTERPRISE_PLAN_ID=
+RAZORPAY_WEBHOOK_SECRET=
 ```
-User Signup
-   ↓
-OTP sent via Resend
-   ↓
-OTP Verification
-   ↓
-JWT Session Creation
-   ↓
-Protected API Access
-```
 
 ---
 
-## Observability & Logging
+# 🚀 Installation
 
-DevFlow provides full observability across its agent pipeline:
-
-**Stored Events**
-- AI request logs
-- Tool execution logs
-- User activity logs
-- Agent decision logs
-- Error logs
-
-**Purpose**
-- Debugging agent behavior
-- Improving prompt design
-- Tracking usage analytics
-
----
-
-## Subscription System
-
-| Tier | Description |
-|---|---|
-| **Free** | Limited requests / tokens |
-| **Paid** | Token-based or request-based expanded limits |
-
-Rate limiting is enforced via Redis. Usage is tracked per user through subscription status and token usage counters.
-
----
-
-## Setup Guide
-
-### 1. Clone the Repository
+## Clone Repository
 
 ```bash
 git clone https://github.com/SanmithD/devflow.git
-```
 
-### 2. Navigate to the Project
-
-```bash
 cd devflow
 ```
 
-### 3. Install Dependencies
+## Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 4. Configure Environment Variables
+or
 
-Create a `.env` file in the root directory:
-
-```env
-DATABASE_URL=
-NEXTAUTH_SECRET=
-RESEND_API_KEY=
-GROQ_API_KEY=
-EXA_API_KEY=
-WEATHER_API_KEY=
-GITHUB_TOKEN=
-REDIS_URL=
+```bash
+yarn install
 ```
 
-### 5. Run Development Server
+---
+
+# 🗄️ Database Setup
+
+Generate Prisma Client:
+
+```bash
+npx prisma generate
+```
+
+Run migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+Open Prisma Studio:
+
+```bash
+npx prisma studio
+```
+
+---
+
+# 💻 Running Locally
+
+Start development server:
 
 ```bash
 npm run dev
 ```
 
-### 6. Build for Production
+Open:
+
+```text
+http://localhost:3000
+```
+
+---
+
+# 📦 Production Build
+
+Build application:
 
 ```bash
 npm run build
 ```
 
----
+Start production server:
 
-## Design Principles
-
-- **Tool-first reasoning** — Tools are first-class citizens in the agent pipeline
-- **Stateless LLM execution** — Each LLM call is self-contained with full context
-- **Structured agent pipeline** — Clear separation of planning, reasoning, and synthesis
-- **Memory-aware interactions** — Context is preserved and optimized across sessions
-- **Fully observable system** — Every agent decision and tool call is logged
-- **Streaming-first UX** — Responses are streamed token-by-token for low perceived latency
+```bash
+npm run dev
+```
 
 ---
 
-<div align="center">
-  Built for DevOps engineers who demand more from their tooling.
-</div>
+# 🌐 Deployment
+
+## Netlify
+
+This project is optimized for Netlify deployment.
+
+Build command:
+
+```bash
+npm run build
+```
+
+Plugin:
+
+```json
+"@netlify/plugin-nextjs"
+```
+
+---
+
+# 🔒 Security Features
+
+- JWT Authentication
+- OAuth Authentication
+- Protected APIs
+- Rate Limiting
+- Secure Sessions
+- Environment Variable Protection
+- Razorpay Webhook Validation
+
+---
+
+# ⚡ Performance Optimizations
+
+- Redis Response Caching
+- Vector Search Retrieval
+- React Query Caching
+- Optimized API Calls
+- Efficient Context Retrieval
+- Reduced OpenAI Requests
+
+---
+
+# 🎯 Use Cases
+
+- DevOps Troubleshooting
+- Infrastructure Support
+- Internal Knowledge Base Search
+- Documentation Chatbot
+- Engineering Assistant
+- Team Knowledge Management
+- AI-Powered Technical Support
+
+---
+
+# 🛣️ Future Roadmap
+
+- Multi-Agent Architecture
+- GitHub Repository Analysis
+- Kubernetes Cluster Monitoring
+- Terraform Automation
+- Slack Integration
+- Microsoft Teams Integration
+- Advanced Analytics Dashboard
+- Self-Healing Infrastructure Suggestions
+
+---
+
+# 🤝 Contributing
+
+Contributions are welcome.
+
+1. Fork the repository
+2. Create a feature branch
+
+```bash
+git checkout -b feature/new-feature
+```
+
+3. Commit your changes
+
+```bash
+git commit -m "Add new feature"
+```
+
+4. Push changes
+
+```bash
+git push origin feature/new-feature
+```
+
+5. Open a Pull Request
+
+---
+
+# 📜 License
+
+MIT License
+
+---
+
+# 👨‍💻 Author
+
+### DevFlow Agent
+
+AI-Powered DevOps Assistant built with:
+
+- Next.js
+- OpenAI
+- LangChain
+- LangGraph
+- Pinecone
+- Prisma
+- Redis
+- PostgreSQL
+
+Built for developers who want intelligent DevOps assistance powered by modern AI technologies.
+
+Built By Sanmith Devadiga
+````
